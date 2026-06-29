@@ -2,7 +2,7 @@ config {
     type: "view",
     schema: "analytics_transform",
     name: "retention_kpis",
-    description: "View สำหรับหาจุดยึด Cohort Date แรกสุด และล็อกคุณลักษณะปัจจุบันของผู้เล่นรายบุคคล (Latest Snapshot)"
+    description: "View สำหรับหาจุดยึด Cohort Date แรกสุด และล็อกคุณลักษณะปัจจุบันของผู้เล่นรายบุคคล (Latest Snapshot) โดยปลด player_status ออก"
 }
 
 WITH
@@ -11,32 +11,17 @@ WITH
     resolved_user_id,
     country,
     os,
-    event_date,
-    -- หาแถวล่าสุดของแต่ละ User เพื่อเอาคุณลักษณะปัจจุบัน (ประเทศ/OS) มาใช้ล็อกค่าสแน็ปช็อต
+    -- แก้บั๊กคอขวด: ดึงวันติดตั้งแอปจริงจากคุณสมบัติ GA4 มายึดตรงๆ ไม่ต้องใช้ MIN(event_date) เพื่อป้องกันหน้าต่างคิวรีขยับทับวันเกิด
+    first_touch_date AS cohort_date,
     ROW_NUMBER() OVER (PARTITION BY resolved_user_id ORDER BY event_date DESC) AS rn
   FROM
-    ${ref("core_events")} ),
-    
-  cohort_first_dates AS (
-  SELECT
-    resolved_user_id,
-    -- ค้นหาจุดเริ่มต้นวันแรกจริงของผู้เล่นจาก event แรกสุดที่ปรากฏในระบบ
-    MIN(event_date) AS cohort_date
-  FROM
-    ${ref("core_events")}
-  GROUP BY
-    1 )
-
+    ${ref("core_events")} )
 SELECT
-  r.resolved_user_id,
-  SAFE_CAST(c.cohort_date AS DATE) AS cohort_date,
-  r.country,
-  r.os
+  resolved_user_id,
+  SAFE_CAST(cohort_date AS DATE) AS cohort_date,
+  country,
+  os
 FROM
-  ranked_user_status r
-INNER JOIN
-  cohort_first_dates c
-ON
-  r.resolved_user_id = c.resolved_user_id
+  ranked_user_status
 WHERE
-  r.rn = 1
+  rn = 1

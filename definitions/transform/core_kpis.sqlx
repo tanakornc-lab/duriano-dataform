@@ -6,7 +6,7 @@ config {
 }
 
 WITH
-  -- 1. สรุปพฤติกรรมผู้เล่นรายวันตามกลุ่มมิติข้อมูล
+  -- 1. สรุปพฤกติกรรมผู้เล่นรายวันตามกลุ่มมิติข้อมูล
   daily_user_activity AS (
   SELECT
     event_date AS date,
@@ -25,7 +25,7 @@ WITH
     2,
     3,
     4 ),
-  -- 2. คำนวณ True Churn (คนที่มาเล่นเมื่อวาน แต่ไม่มาเล่นวันนี้ ในกลุ่มมิติเดียวกัน)
+  -- 2. คำนวณ True Churn (ปลดล็อกมิติสลับประเทศยาม Join เพื่อสกัดยอด Churn แท้จริง)
   churn_logic AS (
   SELECT
     t1.date AS eval_date,
@@ -44,20 +44,22 @@ WITH
   ON
     t1.resolved_user_id = t2.resolved_user_id
     AND t2.date = DATE_ADD(t1.date, INTERVAL 1 DAY)
-    AND t1.country = t2.country
-    AND t1.os = t2.os
   GROUP BY
     1,
     2,
     3 ),
-  -- 3. สรุปยอดรวมตัวเลขตั้งต้นรายวัน
+  -- 3. สรุปยอดรวมตัวเลขตั้งต้นรายวัน (ปรับปรุงสูตร New Users ป้องกันยอดซ้อน)
   daily_metrics AS (
   SELECT
     date,
     country,
     os,
     COUNT(DISTINCT resolved_user_id) AS dau,
-    SUM(is_new_user) AS new_users,
+    COUNT(DISTINCT
+      CASE
+        WHEN is_new_user = 1 THEN resolved_user_id
+    END
+      ) AS new_users,
     SUM(sessions_count) AS total_sessions,
     SUM(total_eng_sec) AS total_eng_sec
   FROM
@@ -95,17 +97,15 @@ SELECT
   SAFE_CAST(m.date AS DATE) AS date,
   SAFE_CAST(m.country AS STRING) AS country,
   SAFE_CAST(m.os AS STRING) AS os,
-  -- Metrics หลัก
   SAFE_CAST(m.dau AS INT64) AS dau,
   SAFE_CAST(mau.mau_30d AS INT64) AS mau_30d,
   SAFE_CAST(m.new_users AS INT64) AS new_users,
   SAFE_CAST(m.total_sessions AS INT64) AS total_sessions,
-  -- ค่าเฉลี่ยพฤติกรรม
   SAFE_CAST(SAFE_DIVIDE(m.total_sessions, NULLIF(m.dau, 0)) AS FLOAT64) AS avg_sessions_per_user,
   SAFE_CAST(SAFE_DIVIDE(m.total_eng_sec, NULLIF(m.dau, 0)) AS FLOAT64) AS avg_engagement_sec_per_user,
-  -- อัตราส่วนร้อยละ
-  SAFE_CAST(SAFE_DIVIDE(m.dau, NULLIF(mau.mau_30d, 0)) * 100 AS FLOAT64) AS stickiness_rate,
-  SAFE_CAST(SAFE_DIVIDE(c.churned_users, NULLIF(c.yesterday_dau, 0)) * 100 AS FLOAT64) AS churn_rate
+  -- เอาคูณ 100 ออกเพื่อให้ค่าส่งไปเป็นทศนิยมดิบ ป้องกันปัญหา Magnification บน Looker Studio
+  SAFE_CAST(SAFE_DIVIDE(m.dau, NULLIF(mau.mau_30d, 0)) AS FLOAT64) AS stickiness_rate,
+  SAFE_CAST(SAFE_DIVIDE(c.churned_users, NULLIF(c.yesterday_dau, 0)) AS FLOAT64) AS churn_rate
 FROM
   daily_metrics m
 LEFT JOIN

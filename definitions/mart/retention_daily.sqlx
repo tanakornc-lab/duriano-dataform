@@ -1,12 +1,12 @@
 config {
     type: "table",
     schema: "duriano_mart",
-    name: "ç",
+    name: "retention_daily",
     bigquery: {
         partitionBy: "cohort_date",
         clusterBy: ["country", "os"]
     },
-    description: "ตารางสรุปผลข้อมูลสถิติ Retention Matrix แบบยาว (Long Format) รองรับการทำ Heatmap ใน Looker Studio (KPI-R01, KPI-R03)",
+    description: "ตารางสรุปผลข้อมูลสถิติ Retention Matrix แบบยาว (Long Format) รองรับการทำ Heatmap ใน Looker Studio โดยไม่มีมิติ player_status",
     columns: {
         cohort_date: "วันที่ผู้ใช้เปิดเข้าเล่นเกมเป็นครั้งแรก",
         day_n: "จำนวนระยะเวลาวันนับจากวันแรกสมัคร (0 ถึง 30)",
