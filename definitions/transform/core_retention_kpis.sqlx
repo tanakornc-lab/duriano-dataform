@@ -1,74 +1,42 @@
 config {
-    type: "table",
+    type: "view",
     schema: "analytics_transform",
-    name: "core_retention_kpis",
-    description: "Transform layer: Cohort Retention analysis (Day 1, 7, 30) grouped by country and os for Duriano."
+    name: "retention_kpis",
+    description: "View สำหรับหาจุดยึด Cohort Date แรกสุด และล็อกคุณลักษณะปัจจุบันของผู้เล่นรายบุคคล (Latest Snapshot)"
 }
 
 WITH
-  -- 1. ยึดวันเกิดและมิติข้อมูลเริ่มต้นของผู้เล่นโดยใช้ฟังก์ชันเรียงเวลา
-  user_cohort AS (
+  ranked_user_status AS (
   SELECT
     resolved_user_id,
-    first_touch_date AS cohort_date,
     country,
-    os
-  FROM
-    ${ref("core_events")}
-  WHERE
-    event_name = 'first_open'
-  QUALIFY
-    ROW_NUMBER() OVER(PARTITION BY resolved_user_id ORDER BY event_timestamp ASC) = 1 ),
-  -- 2. ประวัติวันเล่นเกมทั้งหมด
-  user_activity AS (
-  SELECT
-    DISTINCT resolved_user_id,
-    event_date AS active_date
+    os,
+    event_date,
+    -- หาแถวล่าสุดของแต่ละ User เพื่อเอาคุณลักษณะปัจจุบัน (ประเทศ/OS) มาใช้ล็อกค่าสแน็ปช็อต
+    ROW_NUMBER() OVER (PARTITION BY resolved_user_id ORDER BY event_date DESC) AS rn
   FROM
     ${ref("core_events")} ),
-  -- 3. คำนวณยอดรีเทนตามอายุวันสะสม
-  retention_logic AS (
+    
+  cohort_first_dates AS (
   SELECT
-    c.cohort_date,
-    c.country,
-    c.os,
-    COUNT(DISTINCT c.resolved_user_id) AS cohort_size,
-    COUNT(DISTINCT
-      CASE
-        WHEN DATE_DIFF(a.active_date, c.cohort_date, DAY) = 1 THEN c.resolved_user_id
-    END
-      ) AS day_1_retained,
-    COUNT(DISTINCT
-      CASE
-        WHEN DATE_DIFF(a.active_date, c.cohort_date, DAY) = 7 THEN c.resolved_user_id
-    END
-      ) AS day_7_retained,
-    COUNT(DISTINCT
-      CASE
-        WHEN DATE_DIFF(a.active_date, c.cohort_date, DAY) = 30 THEN c.resolved_user_id
-    END
-      ) AS day_30_retained
+    resolved_user_id,
+    -- ค้นหาจุดเริ่มต้นวันแรกจริงของผู้เล่นจาก event แรกสุดที่ปรากฏในระบบ
+    MIN(event_date) AS cohort_date
   FROM
-    user_cohort c
-  LEFT JOIN
-    user_activity a
-  ON
-    c.resolved_user_id = a.resolved_user_id
+    ${ref("core_events")}
   GROUP BY
-    1,
-    2,
-    3 )
+    1 )
+
 SELECT
-  SAFE_CAST(cohort_date AS DATE) AS cohort_date,
-  SAFE_CAST(country AS STRING) AS country,
-  SAFE_CAST(os AS STRING) AS os,
-  SAFE_CAST(cohort_size AS INT64) AS cohort_size,
-  SAFE_CAST(day_1_retained AS INT64) AS day_1_retained,
-  SAFE_CAST(day_7_retained AS INT64) AS day_7_retained,
-  SAFE_CAST(day_30_retained AS INT64) AS day_30_retained,
-  -- อัตราส่วนคิดเป็น %
-  SAFE_CAST(SAFE_DIVIDE(day_1_retained, NULLIF(cohort_size, 0)) * 100 AS FLOAT64) AS day_1_retention_rate,
-  SAFE_CAST(SAFE_DIVIDE(day_7_retained, NULLIF(cohort_size, 0)) * 100 AS FLOAT64) AS day_7_retention_rate,
-  SAFE_CAST(SAFE_DIVIDE(day_30_retained, NULLIF(cohort_size, 0)) * 100 AS FLOAT64) AS day_30_retention_rate
+  r.resolved_user_id,
+  SAFE_CAST(c.cohort_date AS DATE) AS cohort_date,
+  r.country,
+  r.os
 FROM
-  retention_logic
+  ranked_user_status r
+INNER JOIN
+  cohort_first_dates c
+ON
+  r.resolved_user_id = c.resolved_user_id
+WHERE
+  r.rn = 1
