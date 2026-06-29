@@ -1,6 +1,6 @@
 config {
     type: "incremental",
-    schema: "duriano_mart",
+    schema: "analytics_mart",
     name: "core_daily",
     uniqueKey: ["date", "country", "os"],
     bigquery: {
