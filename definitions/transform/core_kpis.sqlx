@@ -6,17 +6,16 @@ config {
 }
 
 WITH
-  -- 1. ข้อมูลการเล่นระดับ User รายวัน แยกตามมิติข้อมูล
   daily_user_activity AS (
   SELECT
     event_date AS date,
     country,
     os,
-    user_id,
+    resolved_user_id,
     MAX(
     IF
       (event_name = 'first_open', 1, 0)) AS is_new_user,
-    COUNT(DISTINCT session_id) AS sessions_count,
+    COUNT(DISTINCT ga_session_id) AS sessions_count,
     SUM(engagement_time_sec) AS total_eng_sec
   FROM
     ${ref("core_events")}
@@ -25,16 +24,15 @@ WITH
     2,
     3,
     4 ),
-  -- 2. คำนวณ True Churn (คนที่เล่นเมื่อวานในเซกเมนต์นั้น แต่ไม่ได้เล่นวันนี้)
   churn_logic AS (
   SELECT
     t1.date AS eval_date,
     t1.country,
     t1.os,
-    COUNT(DISTINCT t1.user_id) AS yesterday_dau,
+    COUNT(DISTINCT t1.resolved_user_id) AS yesterday_dau,
     COUNT(DISTINCT
       CASE
-        WHEN t2.user_id IS NULL THEN t1.user_id
+        WHEN t2.resolved_user_id IS NULL THEN t1.resolved_user_id
     END
       ) AS churned_users
   FROM
@@ -42,19 +40,18 @@ WITH
   LEFT JOIN
     daily_user_activity t2
   ON
-    t1.user_id = t2.user_id
+    t1.resolved_user_id = t2.resolved_user_id
     AND t2.date = DATE_ADD(t1.date, INTERVAL 1 DAY)
   GROUP BY
     1,
     2,
     3 ),
-  -- 3. สรุป Metrics รายวันตั้งต้น
   daily_metrics AS (
   SELECT
     date,
     country,
     os,
-    COUNT(DISTINCT user_id) AS dau,
+    COUNT(DISTINCT resolved_user_id) AS dau,
     SUM(is_new_user) AS new_users,
     SUM(sessions_count) AS total_sessions,
     SUM(total_eng_sec) AS total_eng_sec
@@ -64,13 +61,12 @@ WITH
     1,
     2,
     3 ),
-  -- 4. คำนวณ MAU 30 วันย้อนหลังแยกตาม Country และ OS
   mau_rolling_metrics AS (
   SELECT
     d.date,
     u.country,
     u.os,
-    COUNT(DISTINCT u.user_id) AS mau_30d
+    COUNT(DISTINCT u.resolved_user_id) AS mau_30d
   FROM (
     SELECT
       DISTINCT date,
@@ -93,19 +89,17 @@ SELECT
   SAFE_CAST(m.date AS DATE) AS date,
   SAFE_CAST(m.country AS STRING) AS country,
   SAFE_CAST(m.os AS STRING) AS os,
-  -- 1. Active Users (DAU) & MAU
+  -- Metrics หลัก
   SAFE_CAST(m.dau AS INT64) AS dau,
   SAFE_CAST(mau.mau_30d AS INT64) AS mau_30d,
-  -- 2. New Users
   SAFE_CAST(m.new_users AS INT64) AS new_users,
   SAFE_CAST(m.total_sessions AS INT64) AS total_sessions,
-  -- 6. Avg. Sessions per User
+  -- ค่าเฉลี่ยการเล่น
   SAFE_CAST(SAFE_DIVIDE(m.total_sessions, NULLIF(m.dau, 0)) AS FLOAT64) AS avg_sessions_per_user,
-  -- 5. Avg. Engagement Time per Users
   SAFE_CAST(SAFE_DIVIDE(m.total_eng_sec, NULLIF(m.dau, 0)) AS FLOAT64) AS avg_engagement_sec_per_user,
-  -- 3. Stickiness Rate
+  -- อัตราส่วนความถี่
   SAFE_CAST(SAFE_DIVIDE(m.dau, NULLIF(mau.mau_30d, 0)) * 100 AS FLOAT64) AS stickiness_rate,
-  -- 4. True Churn Rate (คนที่หายไป / DAU เมื่อวาน ของกลุ่มนั้น)
+  -- True Churn Rate
   SAFE_CAST(SAFE_DIVIDE(c.churned_users, NULLIF(c.yesterday_dau, 0)) * 100 AS FLOAT64) AS churn_rate
 FROM
   daily_metrics m
