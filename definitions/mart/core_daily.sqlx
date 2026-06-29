@@ -1,0 +1,48 @@
+config {
+    type: "incremental",
+    schema: "analytics_mart",
+    name: "core_daily",
+    uniqueKey: ["date", "country", "os"],
+    bigquery: {
+        partitionBy: "date",
+        clusterBy: ["country", "os"]
+    },
+    description: "Final Mart layer containing optimized daily Core KPIs with Country and OS dimensions for Duriano BI reporting.",
+    columns: {
+        date: "วันที่เกิดกิจกรรม (อิงตามเวลา Asia/Bangkok)",
+        country: "ประเทศของผู้ใช้งาน",
+        os: "ระบบปฏิบัติการที่ใช้งาน (iOS หรือ Android)",
+        dau: "จำนวนผู้เล่นที่เข้ามาใช้งานจริงในวันนั้นแบบไม่ซ้ำกัน (Daily Active Users)",
+        mau_30d: "จำนวนผู้เล่นสะสมย้อนหลัง 30 วันแบบไม่ซ้ำกัน (Monthly Active Users)",
+        new_users: "จำนวนผู้เล่นใหม่ที่เปิดเกมครั้งแรกในวันนั้น",
+        total_sessions: "ยอดรวมรอบการเข้าเล่นเกมทั้งหมดในวันนั้น",
+        avg_sessions_per_user: "ค่าเฉลี่ยจำนวนรอบการเข้าเล่นเกมต่อผู้ใช้ (Sessions / DAU)",
+        avg_engagement_sec_per_user: "ค่าเฉลี่ยเวลาที่ใช้เล่นเกมจริงต่อผู้ใช้ในวันนั้น (วินาที)",
+        stickiness_rate: "อัตราความถี่ในการกลับมาเล่นเกม คำนวณจาก DAU / MAU * 100 (%)",
+        churn_rate: "อัตราการสูญเสียผู้เล่นเปรียบเทียบกับวันก่อนหน้าแบบ True Churn (%)",
+        updated_at: "เวลาที่ข้อมูลในแถวนี้ถูกประมวลผลและอัปเดล่าสุด"
+    }
+}
+
+SELECT
+  date,
+  country,
+  os,
+  dau,
+  mau_30d,
+  new_users,
+  total_sessions,
+  avg_sessions_per_user,
+  avg_engagement_sec_per_user,
+  stickiness_rate,
+  churn_rate,
+  CURRENT_TIMESTAMP() AS updated_at
+FROM
+  ${ref("core_kpis")}
+WHERE
+  ${
+      when(incremental(),
+          `date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 3 DAY)`,
+          `date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 90 DAY)`
+      )
+  }

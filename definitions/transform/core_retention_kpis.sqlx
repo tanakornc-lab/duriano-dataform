@@ -1,0 +1,75 @@
+config {
+    type: "table",
+    schema: "analytics_transform",
+    name: "core_retention_kpis",
+    description: "Transform layer: Cohort Retention analysis (Day 1, 7, 30) grouped by country and os for Duriano."
+}
+
+WITH
+  -- 1. ยึดวันเกิดและมิติข้อมูลเริ่มต้นของผู้เล่น (สไลด์ตาม Country/OS ได้ถูกต้อง)
+  user_cohort AS (
+  SELECT
+    user_id,
+    event_date AS cohort_date,
+    country,
+    os
+  FROM
+    ${ref("core_events")}
+  WHERE
+    event_name = 'first_open'
+  QUALIFY
+    ROW_NUMBER() OVER(PARTITION BY user_id ORDER BY event_timestamp ASC) = 1 ),
+  -- 2. ประวัติวันที่เข้าเล่นเกมทั้งหมด
+  user_activity AS (
+  SELECT
+    DISTINCT user_id,
+    event_date AS active_date
+  FROM
+    ${ref("core_events")} ),
+  -- 3. คำนวณยอดรีเทนตามมิติข้อมูล
+  retention_logic AS (
+  SELECT
+    c.cohort_date,
+    c.country,
+    c.os,
+    COUNT(DISTINCT c.user_id) AS cohort_size,
+    COUNT(DISTINCT
+      CASE
+        WHEN DATE_DIFF(a.active_date, c.cohort_date, DAY) = 1 THEN c.user_id
+    END
+      ) AS day_1_retained,
+    COUNT(DISTINCT
+      CASE
+        WHEN DATE_DIFF(a.active_date, c.cohort_date, DAY) = 7 THEN c.user_id
+    END
+      ) AS day_7_retained,
+    COUNT(DISTINCT
+      CASE
+        WHEN DATE_DIFF(a.active_date, c.cohort_date, DAY) = 30 THEN c.user_id
+    END
+      ) AS day_30_retained
+  FROM
+    user_cohort c
+  LEFT JOIN
+    user_activity a
+  ON
+    c.user_id = a.user_id
+  GROUP BY
+    1,
+    2,
+    3 )
+SELECT
+  SAFE_CAST(cohort_date AS DATE) AS cohort_date,
+  SAFE_CAST(country AS STRING) AS country,
+  SAFE_CAST(os AS STRING) AS os,
+  -- 8. Retention Rate by Cohort (Cohort Size)
+  SAFE_CAST(cohort_size AS INT64) AS cohort_size,
+  SAFE_CAST(day_1_retained AS INT64) AS day_1_retained,
+  SAFE_CAST(day_7_retained AS INT64) AS day_7_retained,
+  SAFE_CAST(day_30_retained AS INT64) AS day_30_retained,
+  -- 7. Day 1, 7, 30 Retention Rate (%)
+  SAFE_CAST(SAFE_DIVIDE(day_1_retained, NULLIF(cohort_size, 0)) * 100 AS FLOAT64) AS day_1_retention_rate,
+  SAFE_CAST(SAFE_DIVIDE(day_7_retained, NULLIF(cohort_size, 0)) * 100 AS FLOAT64) AS day_7_retention_rate,
+  SAFE_CAST(SAFE_DIVIDE(day_30_retained, NULLIF(cohort_size, 0)) * 100 AS FLOAT64) AS day_30_retention_rate
+FROM
+  retention_logic

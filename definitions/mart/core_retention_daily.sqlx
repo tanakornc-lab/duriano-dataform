@@ -1,0 +1,46 @@
+config {
+    type: "incremental",
+    schema: "analytics_mart",
+    name: "core_retention_daily",
+    uniqueKey: ["cohort_date", "country", "os"],
+    bigquery: {
+        partitionBy: "cohort_date",
+        clusterBy: ["country", "os"]
+    },
+    description: "Final Mart layer containing cohort retention metrics broken down by country and os for Duriano dashboards.",
+    columns: {
+        cohort_date: "วันที่ผู้เล่นเปิดเกมครั้งแรก (วันที่ฟอร์มกลุ่ม Cohort อิงเวลา BKK)",
+        country: "ประเทศของผู้ใช้งานแรกเริ่ม",
+        os: "ระบบปฏิบัติการแรกเริ่มที่ใช้งาน",
+        cohort_size: "จำนวนผู้เล่นใหม่ทั้งหมดที่เกิดในวันนั้นตามกลุ่มมิติข้อมูล",
+        day_1_retained: "จำนวนผู้เล่นจาก Cohort ที่กลับมาเล่นในวันที่ 1",
+        day_7_retained: "จำนวนผู้เล่นจาก Cohort ที่กลับมาเล่นในวันที่ 7",
+        day_30_retained: "จำนวนผู้เล่นจาก Cohort ที่กลับมาเล่นในวันที่ 30",
+        day_1_retention_rate: "อัตราส่วนการกลับมาเล่นในวันที่ 1 (%)",
+        day_7_retention_rate: "อัตราส่วนการกลับมาเล่นในวันที่ 7 (%)",
+        day_30_retention_rate: "อัตราส่วนการกลับมาเล่นในวันที่ 30 (%)",
+        updated_at: "เวลาที่ข้อมูลในแถวนี้ถูกประมวลผลและอัปเดล่าสุด"
+    }
+}
+
+SELECT
+  cohort_date,
+  country,
+  os,
+  cohort_size,
+  day_1_retained,
+  day_7_retained,
+  day_30_retained,
+  day_1_retention_rate,
+  day_7_retention_rate,
+  day_30_retention_rate,
+  CURRENT_TIMESTAMP() AS updated_at
+FROM
+  ${ref("core_retention_kpis")}
+WHERE
+  ${
+      when(incremental(),
+          `cohort_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 3 DAY)`,
+          `cohort_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 90 DAY)`
+      )
+  }

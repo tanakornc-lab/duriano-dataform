@@ -1,0 +1,7 @@
+defaultProject: duriano
+defaultLocation: "asia-southeast1"
+defaultDataset: dataform
+defaultAssertionDataset: dataform_assertions
+dataformCoreVersion: 3.0.0
+vars:
+  ga4_dataset: "duriano.analytics_485152863"
