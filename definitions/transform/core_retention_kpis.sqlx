@@ -6,6 +6,7 @@ config {
 }
 
 WITH
+  -- 1. ยึดวันเกิดและมิติข้อมูลเริ่มต้นของผู้เล่นโดยใช้ฟังก์ชันเรียงเวลา
   user_cohort AS (
   SELECT
     resolved_user_id,
@@ -18,12 +19,14 @@ WITH
     event_name = 'first_open'
   QUALIFY
     ROW_NUMBER() OVER(PARTITION BY resolved_user_id ORDER BY event_timestamp ASC) = 1 ),
+  -- 2. ประวัติวันเล่นเกมทั้งหมด
   user_activity AS (
   SELECT
     DISTINCT resolved_user_id,
     event_date AS active_date
   FROM
     ${ref("core_events")} ),
+  -- 3. คำนวณยอดรีเทนตามอายุวันสะสม
   retention_logic AS (
   SELECT
     c.cohort_date,
@@ -63,6 +66,7 @@ SELECT
   SAFE_CAST(day_1_retained AS INT64) AS day_1_retained,
   SAFE_CAST(day_7_retained AS INT64) AS day_7_retained,
   SAFE_CAST(day_30_retained AS INT64) AS day_30_retained,
+  -- อัตราส่วนคิดเป็น %
   SAFE_CAST(SAFE_DIVIDE(day_1_retained, NULLIF(cohort_size, 0)) * 100 AS FLOAT64) AS day_1_retention_rate,
   SAFE_CAST(SAFE_DIVIDE(day_7_retained, NULLIF(cohort_size, 0)) * 100 AS FLOAT64) AS day_7_retention_rate,
   SAFE_CAST(SAFE_DIVIDE(day_30_retained, NULLIF(cohort_size, 0)) * 100 AS FLOAT64) AS day_30_retention_rate

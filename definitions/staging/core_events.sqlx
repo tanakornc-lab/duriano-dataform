@@ -8,6 +8,7 @@ config {
         user_id: "Logged-in User ID (ถ้ามี)",
         resolved_user_id: "ใช้ user_id เป็นหลัก ถ้าไม่มีใช้ user_pseudo_id",
         event_date: "วันที่เกิด Event (Asia/Bangkok)",
+        event_timestamp: "เวลาที่เกิดกิจกรรมเป๊ะๆ (UTC)",
         event_name: "ชื่อกิจกรรม (first_open, session_start, user_engagement)",
         country: "ประเทศของผู้ใช้งาน (Default: '(not set)')",
         os: "ระบบปฏิบัติการ (Default: '(not set)')",
@@ -48,6 +49,7 @@ WITH
     AND event_name IN ('session_start',
       'first_open',
       'user_engagement')
+    -- คัดกรองโหมด Debug
     AND NOT EXISTS(
     SELECT
       1
@@ -60,24 +62,24 @@ WITH
 SELECT
   SAFE_CAST(user_pseudo_id AS STRING) AS user_pseudo_id,
   SAFE_CAST(user_id AS STRING) AS user_id,
-  -- มัดรวมไอดีเพื่อกันผู้เล่น Guest หาย!
+  -- Identity Resolution
   SAFE_CAST(COALESCE(NULLIF(user_id, ''), user_pseudo_id) AS STRING) AS resolved_user_id,
   SAFE_CAST(EXTRACT(DATE
     FROM
       TIMESTAMP_MICROS(event_timestamp) AT TIME ZONE 'Asia/Bangkok') AS DATE) AS event_date,
+  -- ส่งออกแบบ TIMESTAMP เพื่อให้ไฟล์อื่นนำไป ORDER BY ได้ไม่พัง
+  SAFE_CAST(TIMESTAMP_MICROS(event_timestamp) AS TIMESTAMP) AS event_timestamp,
   SAFE_CAST(event_name AS STRING) AS event_name,
   SAFE_CAST(country AS STRING) AS country,
   SAFE_CAST(os AS STRING) AS os,
   SAFE_CAST(ga_session_id AS INT64) AS ga_session_id,
-  -- แปลงหน่วยจาก msec เป็นวินาที
+  -- แปลงหน่วย msec เป็นวินาที
   SAFE_CAST(engagement_time_msec / 1000 AS FLOAT64) AS engagement_time_sec,
-  -- ดึงวันเกิดจากระบบ GA4 โดยตรง
   SAFE_CAST(EXTRACT(DATE
     FROM
       TIMESTAMP_MICROS(NULLIF(user_first_touch_timestamp, 0)) AT TIME ZONE 'Asia/Bangkok') AS DATE) AS first_touch_date
 FROM
   raw_events
 WHERE
-  -- ป้องกันข้อมูลขยะ
   NOT (event_name = 'user_engagement'
     AND engagement_time_msec = 0)
