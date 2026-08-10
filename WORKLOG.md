@@ -19,6 +19,31 @@
 
 ---
 
+## [2026-08-10] — สร้าง pipeline ครบ 3 ชั้น + ทำ repo structure ให้ parity กับ MCF
+
+- **ทำโดย:** JOEKER + Claude (claude-sonnet-4-6)
+- **เสร็จ:**
+  - **Pipeline files ครบ 21 ไฟล์** commit เข้า main (PR #2 merged ✅)
+    - Staging 6 ไฟล์: `stg_core_events`, `stg_run_events`, `stg_mode_events`, `stg_economy_events`, `stg_iap_events`, `stg_achievement_events`
+    - Transform 8 ไฟล์: `int_core_kpis`, `int_retention_kpis`, `int_runs`, `int_run_kpis`, `int_boss_kpis`, `int_economy_kpis`, `int_iap_kpis`, `int_achievement_kpis`
+    - Mart 7 ไฟล์: `mart_core_daily`, `mart_retention_daily`, `mart_run_daily`, `mart_boss_daily`, `mart_economy_daily`, `mart_iap_daily`, `mart_achievement_daily`
+  - **Rename convention แก้ไขครบ** (PR #2): 10 ไฟล์ที่ขาด prefix ถูก rename + `name:` + `${ref(...)}` ทุกจุดอัปเดตแล้ว
+  - **Shared configs เพิ่มเข้า repo** ให้ parity กับ MCF (PR #3 merged ✅): `.sqlfluff`, `.github/workflows/dataform-ci.yml`, `includes/utils.js`, `.claude_skills/` (3 skills)
+  - **SYSTEM_ARCHITECTURE.md** สร้างเสร็จ (PR #4 merged ✅) — document สถานะจริง ณ 10 ส.ค. 2026
+- **ค้าง:**
+  - 🔴 Game team ยังไม่ deploy custom events สู่ production — 12 events ยัง DESIGN — pipeline ยังรัน execution ไม่ได้
+  - 🟡 Setup orchestration (Log Sink → Pub/Sub → Cloud Run) เหมือน MCF pattern — ยังไม่เริ่ม
+  - 🟡 Branch protection บน GitHub ยังไม่เปิด
+  - 🟡 Looker Studio dashboard — รอ data จริงก่อน
+  - 🟡 Website Analytics — on hold รอเคลียร์สถานการณ์ event tracking
+- **ตัดสินใจ:**
+  - Transform KPI files ใช้ `int_` prefix (เช่น `int_run_kpis`) ตาม MCF convention — ไม่ใช่ `run_kpis` แบบไม่มี prefix
+  - SYSTEM_ARCHITECTURE.md เป็น project-specific — ไม่ share ข้าม repo (ต่างจาก EXPERIMENT_PLAYBOOK ที่ย้ายไป ads-company)
+  - `experiment-analyst.md` skill ชี้ไปที่ `../../ads-company/playbooks/EXPERIMENT_PLAYBOOK.md` เพราะ playbook ถูก centralize แล้ว
+- **ระวัง:** ทุก mart table ยังว่างอยู่ — pipeline code พร้อมแล้วแต่ยังไม่มี data จริง เพราะ custom events ยังไม่ถึง production
+
+---
+
 ## [2026-08-10] — ตั้งค่า documentation และ TRACKING_PLAN
 
 - **ทำโดย:** JOEKER + Claude (claude-sonnet-4-6)
