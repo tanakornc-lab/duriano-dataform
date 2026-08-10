@@ -1,7 +1,7 @@
 config {
     type: "view",
     schema: "analytics_transform",
-    name: "run_kpis",
+    name: "int_run_kpis",
     description: "Transform: daily run performance aggregations จาก int_runs + pre-run selection จาก stg_mode_events. grain: anchor_date × country × os × game_mode × hero_id × weapon_id × trail_id × difficulty × result × cause_of_death"
 }
 

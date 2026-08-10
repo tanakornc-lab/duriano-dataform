@@ -60,7 +60,7 @@ SELECT
   mode_selections,
   CURRENT_TIMESTAMP() AS updated_at
 
-FROM ${ref("run_kpis")}
+FROM ${ref("int_run_kpis")}
 WHERE ${when(incremental(),
     `event_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 3 DAY)`,
     `event_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 90 DAY)`

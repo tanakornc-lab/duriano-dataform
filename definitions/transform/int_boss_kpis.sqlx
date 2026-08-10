@@ -1,7 +1,7 @@
 config {
     type: "view",
     schema: "analytics_transform",
-    name: "boss_kpis",
+    name: "int_boss_kpis",
     description: "Transform: boss analytics จาก stg_run_events (boss_result rows เท่านั้น). grain: event_date × country × os × boss_id × result"
 }
 

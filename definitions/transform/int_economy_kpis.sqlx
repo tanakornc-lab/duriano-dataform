@@ -1,7 +1,7 @@
 config {
     type: "view",
     schema: "analytics_transform",
-    name: "economy_kpis",
+    name: "int_economy_kpis",
     description: "Transform: economy loop — coins earned (run reward) และ coins spent (permanent upgrade). grain: event_date × country × os × economy_type × item_name"
 }
 

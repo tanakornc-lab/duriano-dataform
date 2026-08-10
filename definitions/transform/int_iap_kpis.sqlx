@@ -1,7 +1,7 @@
 config {
     type: "view",
     schema: "analytics_transform",
-    name: "iap_kpis",
+    name: "int_iap_kpis",
     description: "Transform: monetization — purchase revenue, paywall impressions, restore attempts. grain: event_date × country × os × event_type × item_name / offer_id"
 }
 
