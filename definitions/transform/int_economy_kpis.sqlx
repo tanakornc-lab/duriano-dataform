@@ -1,0 +1,59 @@
+config {
+    type: "view",
+    schema: "analytics_transform",
+    name: "int_economy_kpis",
+    description: "Transform: economy loop — coins earned (run reward) และ coins spent (permanent upgrade). grain: event_date × country × os × economy_type × item_name"
+}
+
+WITH
+  earn AS (
+    SELECT
+      event_date,
+      country,
+      os,
+      'earn'                            AS economy_type,
+      CAST(NULL AS STRING)              AS item_name,
+      resolved_user_id,
+      COALESCE(value, 0)               AS coin_amount,
+      run_id
+    FROM ${ref("stg_economy_events")}
+    WHERE event_name = 'earn_virtual_currency'
+  ),
+
+  spend AS (
+    SELECT
+      event_date,
+      country,
+      os,
+      'spend'                           AS economy_type,
+      COALESCE(item_name, '(not set)') AS item_name,
+      resolved_user_id,
+      COALESCE(value, 0)               AS coin_amount,
+      CAST(NULL AS STRING)              AS run_id
+    FROM ${ref("stg_economy_events")}
+    WHERE event_name = 'spend_virtual_currency'
+  ),
+
+  combined AS (
+    SELECT * FROM earn
+    UNION ALL
+    SELECT * FROM spend
+  )
+
+SELECT
+  SAFE_CAST(event_date AS DATE)                               AS event_date,
+  SAFE_CAST(country AS STRING)                                AS country,
+  SAFE_CAST(os AS STRING)                                     AS os,
+  SAFE_CAST(economy_type AS STRING)                           AS economy_type,
+  SAFE_CAST(COALESCE(item_name, '(not set)') AS STRING)      AS item_name,
+
+  CAST(COUNT(*)                                   AS INT64)   AS transactions,
+  CAST(COUNT(DISTINCT resolved_user_id)           AS INT64)   AS players,
+  CAST(SUM(coin_amount)                           AS INT64)   AS total_coins,
+  AVG(coin_amount)                                            AS avg_coins_per_transaction,
+
+  -- earn only: coins per run (NULL สำหรับ spend)
+  AVG(CASE WHEN economy_type = 'earn' THEN coin_amount END)   AS avg_coins_per_run
+
+FROM combined
+GROUP BY 1, 2, 3, 4, 5

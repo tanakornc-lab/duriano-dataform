@@ -1,0 +1,41 @@
+config {
+    type: "incremental",
+    schema: "analytics_mart",
+    name: "mart_achievement_daily",
+    uniqueKey: ["event_date", "country", "os", "achievement_category", "achievement_id"],
+    bigquery: {
+        partitionBy: "event_date",
+        clusterBy: ["country", "os", "achievement_category"]
+    },
+    description: "Mart: achievement unlock (§10). grain: date × country × os × achievement_category × achievement_id. ใช้วิเคราะห์ unlock rate แยกตาม hero/weapon/trail",
+    columns: {
+        event_date: "วันที่ unlock (Asia/Bangkok)",
+        country: "ประเทศของผู้เล่น",
+        os: "ระบบปฏิบัติการ",
+        achievement_category: "hero / weapon / trail / (not set)",
+        achievement_id: "ID เช่น hero_thor, bow_frost",
+        achievement_name: "Display name สำหรับ Looker Studio",
+        total_unlocks: "จำนวน unlock events รวม (อาจมีซ้ำถ้า event ยิงหลายครั้ง)",
+        unique_unlockers: "จำนวนผู้เล่นไม่ซ้ำที่ unlock achievement นี้",
+        first_time_unlocks: "จำนวน first-time unlock (attempt_number = 1 per user × achievement)",
+        updated_at: "เวลาที่ประมวลผลล่าสุด"
+    }
+}
+
+SELECT
+  event_date,
+  country,
+  os,
+  achievement_category,
+  achievement_id,
+  achievement_name,
+  total_unlocks,
+  unique_unlockers,
+  first_time_unlocks,
+  CURRENT_TIMESTAMP() AS updated_at
+
+FROM ${ref("int_achievement_kpis")}
+WHERE ${when(incremental(),
+    `event_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 3 DAY)`,
+    `event_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 90 DAY)`
+)}

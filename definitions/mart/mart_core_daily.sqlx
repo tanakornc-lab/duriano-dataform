@@ -1,7 +1,7 @@
 config {
     type: "incremental",
     schema: "analytics_mart",
-    name: "core_daily",
+    name: "mart_core_daily",
     uniqueKey: ["date", "country", "os"],
     bigquery: {
         partitionBy: "date",
@@ -38,7 +38,7 @@ SELECT
   churn_rate,
   CURRENT_TIMESTAMP() AS updated_at
 FROM
-  ${ref("core_kpis")}
+  ${ref("int_core_kpis")}
 WHERE
   ${
       when(incremental(),

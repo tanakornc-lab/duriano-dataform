@@ -1,0 +1,67 @@
+config {
+    type: "incremental",
+    schema: "analytics_mart",
+    name: "mart_run_daily",
+    uniqueKey: ["event_date", "country", "os", "game_mode", "hero_id", "weapon_id", "trail_id", "difficulty", "result", "cause_of_death"],
+    bigquery: {
+        partitionBy: "event_date",
+        clusterBy: ["country", "os", "result"]
+    },
+    description: "Mart: daily run performance + pre-run selection (§3 §4 §6 §7). grain: date × country × os × game_mode × hero × weapon × trail × difficulty × result × cause_of_death",
+    columns: {
+        event_date: "วันที่ run เริ่ม (anchor_date = event_date ของ level_start, Asia/Bangkok)",
+        country: "ประเทศของผู้เล่น",
+        os: "ระบบปฏิบัติการ",
+        game_mode: "normal / ranked / (not set)",
+        hero_id: "ID hero ที่เลือก / (not set)",
+        weapon_id: "ID weapon ที่เลือก / (not set)",
+        trail_id: "ID trail ที่เลือก / (not set)",
+        difficulty: "normal / hard / god / n/a / (not set)",
+        result: "win / death / quit / (not completed)",
+        cause_of_death: "สาเหตุการจบ (death only) / (not set)",
+        runs_started: "จำนวน run ที่เริ่มใน grain นี้",
+        runs_completed: "จำนวน run ที่มี level_end event",
+        wins: "จำนวน run ที่ result = win",
+        deaths: "จำนวน run ที่ result = death",
+        quits: "จำนวน run ที่ result = quit",
+        players: "จำนวนผู้เล่นไม่ซ้ำใน grain นี้",
+        avg_duration_sec: "ระยะเวลาเฉลี่ยต่อ run ที่จบสมบูรณ์ (วินาที)",
+        avg_realm_reached: "realm เฉลี่ยที่ถึงก่อน run จบ",
+        avg_realm_reached_death: "realm เฉลี่ยเมื่อตาย — ใช้ pinpoint จุดที่ผู้เล่นติด",
+        total_boss_encounters: "จำนวน boss encounters รวมทุก run ใน grain นี้",
+        total_boss_wins: "จำนวน boss wins รวม",
+        mode_selections: "จำนวนครั้งที่เลือก game_mode นี้ จาก mode_select event",
+        updated_at: "เวลาที่ประมวลผลล่าสุด"
+    }
+}
+
+SELECT
+  event_date,
+  country,
+  os,
+  game_mode,
+  hero_id,
+  weapon_id,
+  trail_id,
+  difficulty,
+  result,
+  cause_of_death,
+  runs_started,
+  runs_completed,
+  wins,
+  deaths,
+  quits,
+  players,
+  avg_duration_sec,
+  avg_realm_reached,
+  avg_realm_reached_death,
+  total_boss_encounters,
+  total_boss_wins,
+  mode_selections,
+  CURRENT_TIMESTAMP() AS updated_at
+
+FROM ${ref("int_run_kpis")}
+WHERE ${when(incremental(),
+    `event_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 3 DAY)`,
+    `event_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 90 DAY)`
+)}

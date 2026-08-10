@@ -1,0 +1,81 @@
+config {
+    type: "view",
+    schema: "analytics_transform",
+    name: "int_run_kpis",
+    description: "Transform: daily run performance aggregations จาก int_runs + pre-run selection จาก stg_mode_events. grain: anchor_date × country × os × game_mode × hero_id × weapon_id × trail_id × difficulty × result × cause_of_death"
+}
+
+WITH
+  run_data AS (
+    SELECT
+      anchor_date                                                   AS event_date,
+      country,
+      os,
+      game_mode,
+      hero_id,
+      weapon_id,
+      trail_id,
+      difficulty,
+      result,
+      COALESCE(cause_of_death, '(not set)')                         AS cause_of_death,
+      resolved_user_id,
+      is_completed,
+      duration_sec,
+      realm_reached,
+      boss_encounters,
+      boss_wins
+    FROM ${ref("int_runs")}
+  ),
+
+  mode_selections AS (
+    SELECT
+      event_date,
+      country,
+      os,
+      COALESCE(game_mode, '(not set)') AS game_mode,
+      COUNT(*) AS total_mode_selections
+    FROM ${ref("stg_mode_events")}
+    WHERE game_mode IS NOT NULL
+    GROUP BY 1, 2, 3, 4
+  )
+
+SELECT
+  r.event_date,
+  r.country,
+  r.os,
+  r.game_mode,
+  r.hero_id,
+  r.weapon_id,
+  r.trail_id,
+  r.difficulty,
+  r.result,
+  r.cause_of_death,
+
+  -- run counts
+  CAST(COUNT(*)                                             AS INT64)   AS runs_started,
+  CAST(COUNTIF(r.is_completed)                             AS INT64)   AS runs_completed,
+  CAST(COUNTIF(r.result = 'win')                           AS INT64)   AS wins,
+  CAST(COUNTIF(r.result = 'death')                         AS INT64)   AS deaths,
+  CAST(COUNTIF(r.result = 'quit')                          AS INT64)   AS quits,
+  CAST(COUNT(DISTINCT r.resolved_user_id)                  AS INT64)   AS players,
+
+  -- run duration & realm (NULL = no data, ต่างจาก 0 = measured zero)
+  AVG(CASE WHEN r.is_completed THEN CAST(r.duration_sec AS FLOAT64) END) AS avg_duration_sec,
+  AVG(CAST(r.realm_reached AS FLOAT64))                                   AS avg_realm_reached,
+  AVG(CASE WHEN r.result = 'death' THEN CAST(r.realm_reached AS FLOAT64) END) AS avg_realm_reached_death,
+
+  -- boss
+  CAST(SUM(r.boss_encounters)                              AS INT64)   AS total_boss_encounters,
+  CAST(SUM(r.boss_wins)                                   AS INT64)   AS total_boss_wins,
+
+  -- mode selections (LEFT JOIN: มีแค่ rows ที่ game_mode × date × country × os ตรงกัน)
+  CAST(COALESCE(m.total_mode_selections, 0)               AS INT64)   AS mode_selections
+
+FROM run_data r
+LEFT JOIN mode_selections m
+  ON  r.event_date = m.event_date
+  AND r.country    = m.country
+  AND r.os         = m.os
+  AND r.game_mode  = m.game_mode
+
+GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10

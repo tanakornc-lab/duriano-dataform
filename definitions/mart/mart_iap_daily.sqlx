@@ -1,0 +1,49 @@
+config {
+    type: "incremental",
+    schema: "analytics_mart",
+    name: "mart_iap_daily",
+    uniqueKey: ["event_date", "country", "os", "event_type", "item_name", "offer_id"],
+    bigquery: {
+        partitionBy: "event_date",
+        clusterBy: ["country", "os", "event_type"]
+    },
+    description: "Mart: monetization (§9 §11). grain: date × country × os × event_type × item_name × offer_id. รวม purchase / restore_purchase / paywall_impression",
+    columns: {
+        event_date: "วันที่ event (Asia/Bangkok)",
+        country: "ประเทศของผู้เล่น",
+        os: "ระบบปฏิบัติการ",
+        event_type: "purchase / restore_purchase / paywall_impression",
+        item_name: "ชื่อสินค้า / placement / (not set)",
+        item_category: "ประเภทสินค้า (purchase / restore only)",
+        offer_id: "ID ของ offer (paywall only)",
+        unique_users: "จำนวนผู้เล่นไม่ซ้ำ",
+        event_count: "จำนวน events (purchase = deduped ด้วย transaction_id)",
+        total_revenue: "รายได้รวม (purchase only, หน่วยตาม currency)",
+        currency: "สกุลเงิน ISO 4217 (purchase only)",
+        success_count: "จำนวน restore สำเร็จ (restore_purchase only)",
+        failed_count: "จำนวน restore ล้มเหลว (restore_purchase only)",
+        updated_at: "เวลาที่ประมวลผลล่าสุด"
+    }
+}
+
+SELECT
+  event_date,
+  country,
+  os,
+  event_type,
+  item_name,
+  item_category,
+  offer_id,
+  unique_users,
+  event_count,
+  total_revenue,
+  currency,
+  success_count,
+  failed_count,
+  CURRENT_TIMESTAMP() AS updated_at
+
+FROM ${ref("int_iap_kpis")}
+WHERE ${when(incremental(),
+    `event_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 3 DAY)`,
+    `event_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 90 DAY)`
+)}

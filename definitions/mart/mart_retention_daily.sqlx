@@ -1,7 +1,7 @@
 config {
     type: "table",
     schema: "analytics_mart",
-    name: "retention_daily",
+    name: "mart_retention_daily",
     bigquery: {
         partitionBy: "cohort_date",
         clusterBy: ["country", "os"]
@@ -26,7 +26,7 @@ WITH
     os,
     resolved_user_id
   FROM
-    ${ref("retention_kpis")} ),
+    ${ref("int_retention_kpis")} ),
   cohort_sizes AS (
   SELECT
     cohort_date,
@@ -65,9 +65,9 @@ WITH
     cb.os,
     COUNT(DISTINCT ce.resolved_user_id) AS retained_users
   FROM
-    ${ref("core_events")} ce
+    ${ref("stg_core_events")} ce
   INNER JOIN
-    ${ref("retention_kpis")} cb
+    ${ref("int_retention_kpis")} cb
   ON
     ce.resolved_user_id = cb.resolved_user_id
   WHERE

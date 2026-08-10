@@ -1,0 +1,43 @@
+config {
+    type: "incremental",
+    schema: "analytics_mart",
+    name: "mart_economy_daily",
+    uniqueKey: ["event_date", "country", "os", "economy_type", "item_name"],
+    bigquery: {
+        partitionBy: "event_date",
+        clusterBy: ["country", "os", "economy_type"]
+    },
+    description: "Mart: economy loop (§8). grain: date × country × os × economy_type × item_name. earn = รางวัลจาก run, spend = ซื้อ permanent upgrade",
+    columns: {
+        event_date: "วันที่ transaction (Asia/Bangkok)",
+        country: "ประเทศของผู้เล่น",
+        os: "ระบบปฏิบัติการ",
+        economy_type: "earn / spend",
+        item_name: "ชื่อ upgrade ที่ซื้อ (spend only) / (not set) สำหรับ earn",
+        transactions: "จำนวน transactions ใน grain นี้",
+        players: "จำนวนผู้เล่นไม่ซ้ำ",
+        total_coins: "coins รวมทั้งหมดที่ได้รับหรือใช้",
+        avg_coins_per_transaction: "coins เฉลี่ยต่อ transaction",
+        avg_coins_per_run: "coins เฉลี่ยต่อ run (earn only) — NULL สำหรับ spend",
+        updated_at: "เวลาที่ประมวลผลล่าสุด"
+    }
+}
+
+SELECT
+  event_date,
+  country,
+  os,
+  economy_type,
+  item_name,
+  transactions,
+  players,
+  total_coins,
+  avg_coins_per_transaction,
+  avg_coins_per_run,
+  CURRENT_TIMESTAMP() AS updated_at
+
+FROM ${ref("int_economy_kpis")}
+WHERE ${when(incremental(),
+    `event_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 3 DAY)`,
+    `event_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 90 DAY)`
+)}

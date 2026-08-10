@@ -1,0 +1,58 @@
+config {
+    type: "view",
+    schema: "analytics_staging",
+    name: "stg_iap_events",
+    description: "Staging: monetization events — purchase, restore_purchase, paywall_impression",
+    columns: {
+        user_pseudo_id: "Device ID จาก GA4",
+        resolved_user_id: "user_id ถ้ามี fallback user_pseudo_id",
+        event_date: "วันที่ event (Asia/Bangkok)",
+        event_timestamp: "Timestamp UTC",
+        event_name: "purchase / restore_purchase / paywall_impression",
+        country: "ประเทศ (default: '(not set)')",
+        os: "ระบบปฏิบัติการ (default: '(not set)')",
+        transaction_id: "รหัสใบเสร็จ ใช้ dedup purchase ที่ยิงซ้ำ (purchase only)",
+        value: "ยอดเงินจริงที่จ่าย (purchase only)",
+        currency: "สกุลเงิน ISO 4217 เช่น THB (purchase only)",
+        item_name: "ชื่อสินค้า เช่น full_game_unlock (purchase / restore_purchase)",
+        item_category: "ประเภทสินค้า เช่น full_game / currency (purchase / restore_purchase)",
+        restore_status: "success / failed (restore_purchase only)",
+        offer_id: "ID ของ offer ที่แสดง (paywall_impression only)",
+        placement: "ตำแหน่งที่ popup เด้ง เช่น death_screen (paywall_impression only)"
+    }
+}
+
+SELECT
+  SAFE_CAST(user_pseudo_id AS STRING)                                                AS user_pseudo_id,
+  SAFE_CAST(COALESCE(NULLIF(user_id, ''), user_pseudo_id) AS STRING)                AS resolved_user_id,
+  SAFE_CAST(DATE(TIMESTAMP_MICROS(event_timestamp), 'Asia/Bangkok') AS DATE)        AS event_date,
+  SAFE_CAST(TIMESTAMP_MICROS(event_timestamp) AS TIMESTAMP)                         AS event_timestamp,
+  SAFE_CAST(event_name AS STRING)                                                    AS event_name,
+  SAFE_CAST(COALESCE(geo.country, '(not set)') AS STRING)                           AS country,
+  SAFE_CAST(COALESCE(device.operating_system, '(not set)') AS STRING)               AS os,
+
+  -- purchase params
+  SAFE_CAST((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'transaction_id') AS STRING) AS transaction_id,
+  SAFE_CAST(COALESCE(
+    (SELECT value.float_value  FROM UNNEST(event_params) WHERE key = 'value'),
+    (SELECT value.double_value FROM UNNEST(event_params) WHERE key = 'value'),
+    CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'value') AS FLOAT64)
+  ) AS FLOAT64)                                                                                           AS value,
+  SAFE_CAST((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'currency')      AS STRING) AS currency,
+  SAFE_CAST((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'item_name')     AS STRING) AS item_name,
+  SAFE_CAST((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'item_category') AS STRING) AS item_category,
+
+  -- restore_purchase params (ใช้ CASE WHEN เพราะ 'status' ไม่มีใน event อื่น แต่เพื่อ clarity)
+  CASE WHEN event_name = 'restore_purchase'
+    THEN SAFE_CAST((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'status') AS STRING)
+  END AS restore_status,
+
+  -- paywall_impression params
+  SAFE_CAST((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'offer_id')   AS STRING) AS offer_id,
+  SAFE_CAST((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'placement')  AS STRING) AS placement
+
+FROM `${dataform.projectConfig.vars.ga4_dataset}.events_*`
+WHERE
+  _TABLE_SUFFIX >= FORMAT_DATE('%Y%m%d', DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 1 DAY))
+  AND event_name IN ('purchase', 'restore_purchase', 'paywall_impression')
+  AND (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'debug_mode') IS DISTINCT FROM 1

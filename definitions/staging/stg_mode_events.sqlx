@@ -1,0 +1,30 @@
+config {
+    type: "view",
+    schema: "analytics_staging",
+    name: "stg_mode_events",
+    description: "Staging: mode_select — ผู้เล่นเลือกโหมดจาก Main Menu ก่อนเข้าหน้าเตรียมตัว (ยังไม่มี run_id)",
+    columns: {
+        user_pseudo_id: "Device ID จาก GA4",
+        resolved_user_id: "user_id ถ้ามี fallback user_pseudo_id",
+        event_date: "วันที่ event (Asia/Bangkok)",
+        event_timestamp: "Timestamp UTC",
+        country: "ประเทศ (default: '(not set)')",
+        os: "ระบบปฏิบัติการ (default: '(not set)')",
+        game_mode: "โหมดที่เลือก: normal / ranked"
+    }
+}
+
+SELECT
+  SAFE_CAST(user_pseudo_id AS STRING)                                                AS user_pseudo_id,
+  SAFE_CAST(COALESCE(NULLIF(user_id, ''), user_pseudo_id) AS STRING)                AS resolved_user_id,
+  SAFE_CAST(DATE(TIMESTAMP_MICROS(event_timestamp), 'Asia/Bangkok') AS DATE)        AS event_date,
+  SAFE_CAST(TIMESTAMP_MICROS(event_timestamp) AS TIMESTAMP)                         AS event_timestamp,
+  SAFE_CAST(COALESCE(geo.country, '(not set)') AS STRING)                           AS country,
+  SAFE_CAST(COALESCE(device.operating_system, '(not set)') AS STRING)               AS os,
+  SAFE_CAST((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'game_mode') AS STRING) AS game_mode
+
+FROM `${dataform.projectConfig.vars.ga4_dataset}.events_*`
+WHERE
+  _TABLE_SUFFIX >= FORMAT_DATE('%Y%m%d', DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 1 DAY))
+  AND event_name = 'mode_select'
+  AND (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'debug_mode') IS DISTINCT FROM 1

@@ -1,0 +1,126 @@
+config {
+    type: "view",
+    schema: "analytics_transform",
+    name: "int_iap_kpis",
+    description: "Transform: monetization — purchase revenue, paywall impressions, restore attempts. grain: event_date × country × os × event_type × item_name / offer_id"
+}
+
+WITH
+  purchases AS (
+    SELECT
+      event_date,
+      country,
+      os,
+      'purchase'                                        AS event_type,
+      COALESCE(item_name, '(not set)')                  AS item_name,
+      COALESCE(item_category, '(not set)')              AS item_category,
+      CAST(NULL AS STRING)                              AS offer_id,
+      resolved_user_id,
+      -- dedup ด้วย transaction_id ป้องกัน event ยิงซ้ำ
+      transaction_id,
+      COALESCE(value, 0)                                AS revenue,
+      COALESCE(currency, '(not set)')                   AS currency
+    FROM ${ref("stg_iap_events")}
+    WHERE event_name = 'purchase'
+  ),
+
+  -- dedup purchases ด้วย transaction_id
+  purchases_deduped AS (
+    SELECT * EXCEPT (transaction_id),
+      ROW_NUMBER() OVER (PARTITION BY transaction_id ORDER BY event_date) AS rn
+    FROM purchases
+    WHERE transaction_id IS NOT NULL
+  ),
+
+  restores AS (
+    SELECT
+      event_date,
+      country,
+      os,
+      'restore_purchase'                               AS event_type,
+      COALESCE(item_category, '(not set)')             AS item_name,
+      COALESCE(item_category, '(not set)')             AS item_category,
+      CAST(NULL AS STRING)                             AS offer_id,
+      resolved_user_id,
+      CAST(0 AS FLOAT64)                               AS revenue,
+      CAST(NULL AS STRING)                             AS currency,
+      restore_status
+    FROM ${ref("stg_iap_events")}
+    WHERE event_name = 'restore_purchase'
+  ),
+
+  paywalls AS (
+    SELECT
+      event_date,
+      country,
+      os,
+      'paywall_impression'                             AS event_type,
+      COALESCE(placement, '(not set)')                 AS item_name,
+      CAST(NULL AS STRING)                             AS item_category,
+      COALESCE(offer_id, '(not set)')                  AS offer_id,
+      resolved_user_id,
+      CAST(0 AS FLOAT64)                               AS revenue,
+      CAST(NULL AS STRING)                             AS currency,
+      CAST(NULL AS STRING)                             AS restore_status
+    FROM ${ref("stg_iap_events")}
+    WHERE event_name = 'paywall_impression'
+  )
+
+-- purchases (deduped)
+SELECT
+  SAFE_CAST(event_date AS DATE)                             AS event_date,
+  SAFE_CAST(country AS STRING)                              AS country,
+  SAFE_CAST(os AS STRING)                                   AS os,
+  SAFE_CAST(event_type AS STRING)                           AS event_type,
+  SAFE_CAST(item_name AS STRING)                            AS item_name,
+  SAFE_CAST(item_category AS STRING)                        AS item_category,
+  SAFE_CAST(offer_id AS STRING)                             AS offer_id,
+  CAST(COUNT(DISTINCT resolved_user_id)         AS INT64)   AS unique_users,
+  CAST(COUNT(*)                                 AS INT64)   AS event_count,
+  CAST(SUM(revenue)                             AS FLOAT64) AS total_revenue,
+  SAFE_CAST(currency AS STRING)                             AS currency,
+  CAST(NULL AS INT64)                                       AS success_count,
+  CAST(NULL AS INT64)                                       AS failed_count
+FROM purchases_deduped
+WHERE rn = 1
+GROUP BY 1, 2, 3, 4, 5, 6, 7, 11
+
+UNION ALL
+
+-- restore_purchase
+SELECT
+  SAFE_CAST(event_date AS DATE),
+  SAFE_CAST(country AS STRING),
+  SAFE_CAST(os AS STRING),
+  SAFE_CAST(event_type AS STRING),
+  SAFE_CAST(item_name AS STRING),
+  SAFE_CAST(item_category AS STRING),
+  CAST(NULL AS STRING),
+  CAST(COUNT(DISTINCT resolved_user_id) AS INT64),
+  CAST(COUNT(*) AS INT64),
+  CAST(0 AS FLOAT64),
+  CAST(NULL AS STRING),
+  CAST(COUNTIF(restore_status = 'success') AS INT64),
+  CAST(COUNTIF(restore_status = 'failed')  AS INT64)
+FROM restores
+GROUP BY 1, 2, 3, 4, 5, 6
+
+UNION ALL
+
+-- paywall_impression
+SELECT
+  SAFE_CAST(event_date AS DATE),
+  SAFE_CAST(country AS STRING),
+  SAFE_CAST(os AS STRING),
+  SAFE_CAST(event_type AS STRING),
+  SAFE_CAST(item_name AS STRING),
+  CAST(NULL AS STRING),
+  SAFE_CAST(offer_id AS STRING),
+  CAST(COUNT(DISTINCT resolved_user_id) AS INT64),
+  CAST(COUNT(*) AS INT64),
+  CAST(0 AS FLOAT64),
+  CAST(NULL AS STRING),
+  CAST(NULL AS INT64),
+  CAST(NULL AS INT64)
+FROM paywalls
+GROUP BY 1, 2, 3, 4, 5, 7

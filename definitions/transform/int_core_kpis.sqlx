@@ -1,7 +1,7 @@
 config {
     type: "table",
     schema: "analytics_transform",
-    name: "core_kpis",
+    name: "int_core_kpis",
     description: "Transform layer: Aggregated daily Core KPIs, True Churn, and 30-day rolling MAU grouped by country and os for Duriano."
 }
 
@@ -19,7 +19,7 @@ WITH
     COUNT(DISTINCT ga_session_id) AS sessions_count,
     SUM(engagement_time_sec) AS total_eng_sec
   FROM
-    ${ref("core_events")}
+    ${ref("stg_core_events")}
   GROUP BY
     1,
     2,

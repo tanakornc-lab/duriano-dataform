@@ -1,7 +1,7 @@
 config {
     type: "view",
     schema: "analytics_staging",
-    name: "core_events",
+    name: "stg_core_events",
     description: "Staging layer: Cleaned GA4 events for Duriano with Identity Resolution, exact parameters, and BKK timezone.",
     columns: {
         user_pseudo_id: "Device ID ดั้งเดิมจาก GA4 (สำหรับผู้เล่น Guest)",
