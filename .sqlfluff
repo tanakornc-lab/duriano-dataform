@@ -1,0 +1,17 @@
+[sqlfluff]
+dialect = bigquery
+templater = placeholder
+# ข้ามการตรวจจับ Error เชิงโครงสร้าง (PRS) เพราะเราจะปล่อยให้ Dataform Compile เป็นตัวตรวจ Syntax แทน
+exclude_rules = PRS
+
+[sqlfluff:templater:placeholder]
+# สอนให้ SQLFluff มองโค้ด Dataform เช่น ${ref("...")} เป็นแค่ตัวแปร จะได้ไม่งง
+param_regex = \$\{[^}]+\}
+
+[sqlfluff:rules]
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = upper
+[sqlfluff:rules:capitalisation.identifiers]
+capitalisation_policy = lower
+[sqlfluff:rules:capitalisation.functions]
+extended_capitalisation_policy = upper

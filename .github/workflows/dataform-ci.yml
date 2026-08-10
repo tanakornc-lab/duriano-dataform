@@ -1,0 +1,35 @@
+name: Dataform CI Gate
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint-and-compile:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python (For SQLFluff)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 🧹 Install and Run SQLFluff (Lint Check)
+        run: |
+          pip install sqlfluff
+          sqlfluff lint definitions/ --dialect bigquery --templater placeholder
+
+      - name: 🟢 Set up Node.js (For Dataform)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 📦 Install Dataform CLI
+        run: npm install -g @dataform/cli
+
+      - name: 🏗️ Run Dataform Compile Check
+        run: dataform compile
