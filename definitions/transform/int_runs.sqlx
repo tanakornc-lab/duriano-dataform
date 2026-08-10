@@ -1,0 +1,99 @@
+config {
+    type: "view",
+    schema: "analytics_transform",
+    name: "int_runs",
+    description: "Transform: 1 row per run_id — joins level_start (attributes) + level_end (outcome) + boss aggregate. anchor_date = วันที่ level_start เริ่ม ใช้เป็น cohort anchor สำหรับ funnel และ win rate"
+}
+
+WITH
+  -- dedup level_start: ถ้า run_id ยิงซ้ำ ใช้แถวแรกสุด
+  run_starts_raw AS (
+    SELECT
+      resolved_user_id,
+      run_id,
+      event_date        AS anchor_date,
+      event_timestamp   AS start_timestamp,
+      country,
+      os,
+      COALESCE(game_mode, '(not set)')  AS game_mode,
+      COALESCE(hero_id,   '(not set)')  AS hero_id,
+      COALESCE(weapon_id, '(not set)')  AS weapon_id,
+      COALESCE(trail_id,  '(not set)')  AS trail_id,
+      COALESCE(difficulty,'(not set)')  AS difficulty,
+      ROW_NUMBER() OVER (
+        PARTITION BY run_id
+        ORDER BY event_timestamp
+      ) AS attempt_number
+    FROM ${ref("stg_run_events")}
+    WHERE event_name = 'level_start'
+      AND run_id IS NOT NULL
+  ),
+
+  run_starts AS (
+    SELECT * EXCEPT (attempt_number)
+    FROM run_starts_raw
+    WHERE attempt_number = 1
+  ),
+
+  -- dedup level_end: ถ้า run_id ยิงซ้ำ ใช้แถวแรกสุด
+  run_ends_raw AS (
+    SELECT
+      run_id,
+      COALESCE(run_result, '(not set)') AS result,
+      run_duration_sec                   AS duration_sec,
+      realm_reached,
+      cause_of_death,
+      event_timestamp                    AS end_timestamp,
+      ROW_NUMBER() OVER (
+        PARTITION BY run_id
+        ORDER BY event_timestamp
+      ) AS attempt_number
+    FROM ${ref("stg_run_events")}
+    WHERE event_name = 'level_end'
+      AND run_id IS NOT NULL
+  ),
+
+  run_ends AS (
+    SELECT * EXCEPT (attempt_number)
+    FROM run_ends_raw
+    WHERE attempt_number = 1
+  ),
+
+  -- boss stats per run: นับ boss encounters และ wins
+  boss_stats AS (
+    SELECT
+      run_id,
+      COUNT(*)                               AS boss_encounters,
+      COUNTIF(boss_result = 'win')           AS boss_wins,
+      COUNTIF(boss_result = 'death')         AS boss_losses,
+      AVG(CAST(boss_duration_sec AS FLOAT64)) AS avg_boss_duration_sec
+    FROM ${ref("stg_run_events")}
+    WHERE event_name = 'boss_result'
+      AND run_id IS NOT NULL
+    GROUP BY run_id
+  )
+
+SELECT
+  s.resolved_user_id,
+  s.run_id,
+  s.anchor_date,
+  s.country,
+  s.os,
+  s.game_mode,
+  s.hero_id,
+  s.weapon_id,
+  s.trail_id,
+  s.difficulty,
+  COALESCE(e.result, '(not completed)')   AS result,
+  e.duration_sec,
+  e.realm_reached,
+  e.cause_of_death,
+  CASE WHEN e.run_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_completed,
+  COALESCE(b.boss_encounters, 0)          AS boss_encounters,
+  COALESCE(b.boss_wins, 0)               AS boss_wins,
+  COALESCE(b.boss_losses, 0)             AS boss_losses,
+  b.avg_boss_duration_sec
+
+FROM run_starts s
+LEFT JOIN run_ends    e USING (run_id)
+LEFT JOIN boss_stats  b USING (run_id)

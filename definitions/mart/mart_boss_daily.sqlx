@@ -1,0 +1,45 @@
+config {
+    type: "incremental",
+    schema: "analytics_mart",
+    name: "mart_boss_daily",
+    uniqueKey: ["event_date", "country", "os", "boss_id", "result"],
+    bigquery: {
+        partitionBy: "event_date",
+        clusterBy: ["country", "os", "boss_id"]
+    },
+    description: "Mart: boss analytics (§5). grain: date × country × os × boss_id × result. ใช้วิเคราะห์ win rate, avg time to kill แยกตาม boss",
+    columns: {
+        event_date: "วันที่ boss fight (Asia/Bangkok)",
+        country: "ประเทศของผู้เล่น",
+        os: "ระบบปฏิบัติการ",
+        boss_id: "ID ของ boss เช่น odin, thor / (not set)",
+        result: "win / death / (not set)",
+        boss_fights: "จำนวน boss fights ใน grain นี้",
+        wins: "จำนวน fights ที่ชนะ",
+        losses: "จำนวน fights ที่แพ้",
+        players: "จำนวนผู้เล่นไม่ซ้ำ",
+        avg_time_to_kill_sec: "เวลาเฉลี่ยเมื่อชนะ (วินาที) — NULL = ไม่มี win ใน grain นี้",
+        avg_fight_duration_sec: "เวลาเฉลี่ยของ fight ทุกผล",
+        updated_at: "เวลาที่ประมวลผลล่าสุด"
+    }
+}
+
+SELECT
+  event_date,
+  country,
+  os,
+  boss_id,
+  result,
+  boss_fights,
+  wins,
+  losses,
+  players,
+  avg_time_to_kill_sec,
+  avg_fight_duration_sec,
+  CURRENT_TIMESTAMP() AS updated_at
+
+FROM ${ref("boss_kpis")}
+WHERE ${when(incremental(),
+    `event_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 3 DAY)`,
+    `event_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 90 DAY)`
+)}

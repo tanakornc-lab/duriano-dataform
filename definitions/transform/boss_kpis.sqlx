@@ -1,0 +1,29 @@
+config {
+    type: "view",
+    schema: "analytics_transform",
+    name: "boss_kpis",
+    description: "Transform: boss analytics จาก stg_run_events (boss_result rows เท่านั้น). grain: event_date × country × os × boss_id × result"
+}
+
+SELECT
+  SAFE_CAST(event_date AS DATE)                                    AS event_date,
+  SAFE_CAST(country AS STRING)                                     AS country,
+  SAFE_CAST(os AS STRING)                                          AS os,
+  SAFE_CAST(COALESCE(boss_id, '(not set)') AS STRING)             AS boss_id,
+  SAFE_CAST(COALESCE(boss_result, '(not set)') AS STRING)         AS result,
+
+  CAST(COUNT(*)                                          AS INT64)   AS boss_fights,
+  CAST(COUNTIF(boss_result = 'win')                      AS INT64)   AS wins,
+  CAST(COUNTIF(boss_result = 'death')                    AS INT64)   AS losses,
+  CAST(COUNT(DISTINCT resolved_user_id)                  AS INT64)   AS players,
+
+  -- avg time-to-kill: เฉพาะ fights ที่ชนะ
+  AVG(CASE WHEN boss_result = 'win' THEN CAST(boss_duration_sec AS FLOAT64) END) AS avg_time_to_kill_sec,
+  AVG(CAST(boss_duration_sec AS FLOAT64))                                         AS avg_fight_duration_sec
+
+FROM ${ref("stg_run_events")}
+WHERE
+  event_name = 'boss_result'
+  AND boss_id IS NOT NULL
+
+GROUP BY 1, 2, 3, 4, 5

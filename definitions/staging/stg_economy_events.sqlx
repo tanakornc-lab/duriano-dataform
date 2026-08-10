@@ -1,0 +1,43 @@
+config {
+    type: "view",
+    schema: "analytics_staging",
+    name: "stg_economy_events",
+    description: "Staging: economy loop — earn_virtual_currency (รางวัลจาก run) และ spend_virtual_currency (ซื้อ permanent upgrade)",
+    columns: {
+        user_pseudo_id: "Device ID จาก GA4",
+        resolved_user_id: "user_id ถ้ามี fallback user_pseudo_id",
+        event_date: "วันที่ event (Asia/Bangkok)",
+        event_timestamp: "Timestamp UTC",
+        event_name: "earn_virtual_currency / spend_virtual_currency",
+        country: "ประเทศ (default: '(not set)')",
+        os: "ระบบปฏิบัติการ (default: '(not set)')",
+        virtual_currency_name: "ชื่อสกุลเงิน: coin",
+        value: "จำนวนที่ได้รับหรือใช้",
+        run_id: "UUID ของรอบที่ earn — NULL สำหรับ spend (ไม่ผูกกับ run)",
+        item_name: "ชื่อ upgrade ที่ซื้อ (spend only) เช่น hp_upgrade_lv3"
+    }
+}
+
+SELECT
+  SAFE_CAST(user_pseudo_id AS STRING)                                                AS user_pseudo_id,
+  SAFE_CAST(COALESCE(NULLIF(user_id, ''), user_pseudo_id) AS STRING)                AS resolved_user_id,
+  SAFE_CAST(DATE(TIMESTAMP_MICROS(event_timestamp), 'Asia/Bangkok') AS DATE)        AS event_date,
+  SAFE_CAST(TIMESTAMP_MICROS(event_timestamp) AS TIMESTAMP)                         AS event_timestamp,
+  SAFE_CAST(event_name AS STRING)                                                    AS event_name,
+  SAFE_CAST(COALESCE(geo.country, '(not set)') AS STRING)                           AS country,
+  SAFE_CAST(COALESCE(device.operating_system, '(not set)') AS STRING)               AS os,
+  SAFE_CAST((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'virtual_currency_name') AS STRING) AS virtual_currency_name,
+  SAFE_CAST(COALESCE(
+    (SELECT value.float_value  FROM UNNEST(event_params) WHERE key = 'value'),
+    (SELECT value.double_value FROM UNNEST(event_params) WHERE key = 'value'),
+    CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'value') AS FLOAT64)
+  ) AS FLOAT64)                                                                      AS value,
+  SAFE_CAST((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'run_id')   AS STRING) AS run_id,
+  SAFE_CAST((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'item_name') AS STRING) AS item_name
+
+FROM `${dataform.projectConfig.vars.ga4_dataset}.events_*`
+WHERE
+  _TABLE_SUFFIX >= FORMAT_DATE('%Y%m%d', DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 1 DAY))
+  AND event_name IN ('earn_virtual_currency', 'spend_virtual_currency')
+  AND (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'virtual_currency_name') = 'coin'
+  AND (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'debug_mode') IS DISTINCT FROM 1

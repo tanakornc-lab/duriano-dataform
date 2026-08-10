@@ -1,0 +1,41 @@
+config {
+    type: "view",
+    schema: "analytics_transform",
+    name: "achievement_kpis",
+    description: "Transform: achievement unlock aggregations. grain: event_date × country × os × achievement_category × achievement_id"
+}
+
+WITH
+  -- dedup: นับ unlock ครั้งแรกของ user × achievement เท่านั้น
+  deduped AS (
+    SELECT
+      event_date,
+      country,
+      os,
+      resolved_user_id,
+      COALESCE(achievement_id,       '(not set)') AS achievement_id,
+      COALESCE(achievement_name,     '(not set)') AS achievement_name,
+      COALESCE(achievement_category, '(not set)') AS achievement_category,
+      ROW_NUMBER() OVER (
+        PARTITION BY resolved_user_id, achievement_id
+        ORDER BY event_timestamp
+      ) AS attempt_number
+    FROM ${ref("stg_achievement_events")}
+    WHERE achievement_id IS NOT NULL
+  )
+
+SELECT
+  SAFE_CAST(event_date AS DATE)                                        AS event_date,
+  SAFE_CAST(country AS STRING)                                         AS country,
+  SAFE_CAST(os AS STRING)                                              AS os,
+  SAFE_CAST(achievement_category AS STRING)                            AS achievement_category,
+  SAFE_CAST(achievement_id AS STRING)                                  AS achievement_id,
+  SAFE_CAST(MAX(achievement_name) AS STRING)                           AS achievement_name,
+
+  CAST(COUNT(*)                                          AS INT64)     AS total_unlocks,
+  CAST(COUNT(DISTINCT resolved_user_id)                  AS INT64)     AS unique_unlockers,
+  -- first_unlock: นับเฉพาะ attempt_number = 1 (ครั้งแรกของ user × achievement)
+  CAST(COUNTIF(attempt_number = 1)                       AS INT64)     AS first_time_unlocks
+
+FROM deduped
+GROUP BY 1, 2, 3, 4, 5

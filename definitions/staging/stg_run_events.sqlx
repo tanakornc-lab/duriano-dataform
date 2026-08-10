@@ -1,0 +1,82 @@
+config {
+    type: "view",
+    schema: "analytics_staging",
+    name: "stg_run_events",
+    description: "Staging: run-linked events — level_start, boss_encounter, boss_result, level_end. ทุก row ต้องมี run_id.",
+    columns: {
+        user_pseudo_id: "Device ID จาก GA4",
+        resolved_user_id: "user_id ถ้ามี fallback user_pseudo_id",
+        event_date: "วันที่ event (Asia/Bangkok)",
+        event_timestamp: "Timestamp UTC",
+        event_name: "level_start / boss_encounter / boss_result / level_end",
+        country: "ประเทศ (default: '(not set)')",
+        os: "ระบบปฏิบัติการ (default: '(not set)')",
+        run_id: "UUID ของรอบการเล่น — key ที่ผูกทุก event ใน run",
+        hero_id: "ID hero ที่เลือก (level_start only)",
+        weapon_id: "ID weapon ที่เลือก (level_start only)",
+        trail_id: "ID trail ที่เลือก (level_start only)",
+        difficulty: "normal/hard/god/n/a (level_start only)",
+        game_mode: "normal/ranked (level_start only)",
+        realm: "realm ที่ boss อยู่ (boss_encounter only)",
+        boss_id: "ID ของ boss (boss_result only)",
+        boss_result: "win/death (boss_result only)",
+        boss_duration_sec: "เวลา boss fight วินาที (boss_result only)",
+        run_result: "win/death/quit (level_end only)",
+        run_duration_sec: "ความยาวทั้งรอบ วินาที (level_end only)",
+        realm_reached: "realm สุดท้ายก่อน run จบ (level_end only)",
+        cause_of_death: "สาเหตุการจบ run (level_end WHERE result=death)"
+    }
+}
+
+SELECT
+  SAFE_CAST(user_pseudo_id AS STRING)                                                        AS user_pseudo_id,
+  SAFE_CAST(COALESCE(NULLIF(user_id, ''), user_pseudo_id) AS STRING)                        AS resolved_user_id,
+  SAFE_CAST(DATE(TIMESTAMP_MICROS(event_timestamp), 'Asia/Bangkok') AS DATE)                AS event_date,
+  SAFE_CAST(TIMESTAMP_MICROS(event_timestamp) AS TIMESTAMP)                                 AS event_timestamp,
+  SAFE_CAST(event_name AS STRING)                                                            AS event_name,
+  SAFE_CAST(COALESCE(geo.country, '(not set)') AS STRING)                                   AS country,
+  SAFE_CAST(COALESCE(device.operating_system, '(not set)') AS STRING)                       AS os,
+
+  -- shared: run_id (ส่งมาในทุก event ของ run)
+  SAFE_CAST((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'run_id') AS STRING) AS run_id,
+
+  -- level_start params
+  SAFE_CAST((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'hero_id')    AS STRING) AS hero_id,
+  SAFE_CAST((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'weapon_id')  AS STRING) AS weapon_id,
+  SAFE_CAST((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'trail_id')   AS STRING) AS trail_id,
+  SAFE_CAST((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'difficulty') AS STRING) AS difficulty,
+  SAFE_CAST((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'game_mode')  AS STRING) AS game_mode,
+
+  -- boss_encounter params
+  SAFE_CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'realm') AS INT64) AS realm,
+
+  -- boss_result params (ใช้ CASE WHEN เพราะ 'result' และ 'duration_sec' ซ้อนทับกับ level_end)
+  CASE WHEN event_name = 'boss_result'
+    THEN SAFE_CAST((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'boss_id')    AS STRING)
+  END AS boss_id,
+  CASE WHEN event_name = 'boss_result'
+    THEN SAFE_CAST((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'result')     AS STRING)
+  END AS boss_result,
+  CASE WHEN event_name = 'boss_result'
+    THEN SAFE_CAST((SELECT value.int_value    FROM UNNEST(event_params) WHERE key = 'duration_sec') AS INT64)
+  END AS boss_duration_sec,
+
+  -- level_end params
+  CASE WHEN event_name = 'level_end'
+    THEN SAFE_CAST((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'result')        AS STRING)
+  END AS run_result,
+  CASE WHEN event_name = 'level_end'
+    THEN SAFE_CAST((SELECT value.int_value    FROM UNNEST(event_params) WHERE key = 'duration_sec')  AS INT64)
+  END AS run_duration_sec,
+  CASE WHEN event_name = 'level_end'
+    THEN SAFE_CAST((SELECT value.int_value    FROM UNNEST(event_params) WHERE key = 'realm_reached') AS INT64)
+  END AS realm_reached,
+  CASE WHEN event_name = 'level_end'
+    THEN SAFE_CAST((SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'cause_of_death') AS STRING)
+  END AS cause_of_death
+
+FROM `${dataform.projectConfig.vars.ga4_dataset}.events_*`
+WHERE
+  _TABLE_SUFFIX >= FORMAT_DATE('%Y%m%d', DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 1 DAY))
+  AND event_name IN ('level_start', 'boss_encounter', 'boss_result', 'level_end')
+  AND (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'debug_mode') IS DISTINCT FROM 1
