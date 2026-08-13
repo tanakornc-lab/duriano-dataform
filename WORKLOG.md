@@ -19,6 +19,29 @@
 
 ---
 
+## [2026-08-13] — ยืนยัน Play Store data + KPI strategy
+
+- **ทำโดย:** JOEKER + Claude (claude-sonnet-4-6)
+- **เสร็จ:**
+  - ยืนยันว่า `play_store_report` ใน `campfire-production-445306` มีข้อมูล Duriano อยู่แล้ว (`com.adisoft.duriano` ปนอยู่ใน `p_Earnings_monster_campfire` และตารางอื่นๆ) — สามารถสร้าง Play Store pipeline สำหรับ Duriano ได้ทันทีโดยไม่ต้อง setup BDT ใหม่
+  - ยืนยัน KPI source strategy สำหรับ Duriano (เหมือน MCF):
+    - DAU, MAU, Retention, Engagement → GA4
+    - Game mechanics (run, boss, economy) → GA4 custom events
+    - Downloads, Installs, Revenue, Ratings, Crashes → Play Console / ASC (ไม่ใช่ GA4)
+  - ตรวจสอบ MCF PR #21–23 ที่เป็น template: Play Store pipeline ใช้ pattern `declaration → staging (filter Package_ID) → mart (incremental)` — นำมาทำ Duriano ได้โดย clone แล้วเปลี่ยน filter เป็น `com.adisoft.duriano`
+- **ค้าง:**
+  - 🔴 Game team ยังไม่ deploy custom events → GA4 pipeline ยัง execute ไม่ได้
+  - 🟡 Play Store pipeline สำหรับ Duriano — พร้อมสร้างเมื่อ confirm กับทีมว่าต้องการ (pattern จาก MCF พร้อมแล้ว)
+  - 🟡 Apple App Store Connect pipeline — รอ account recovery ของทีม
+  - 🟡 Orchestration (Log Sink → Pub/Sub → Cloud Run) — ยังไม่เริ่ม
+  - 🟡 Branch protection บน GitHub — ยังไม่เปิด
+- **ตัดสินใจ:**
+  - Duriano Play Store pipeline จะ filter `Package_ID = 'com.adisoft.duriano'` เหมือน MCF filter `com.adisoft.campfire` — ข้อมูลจาก dataset เดียวกัน
+  - Revenue source of truth = Play Console / ASC (ไม่ใช่ GA4) — ยืนยันใช้กับ Duriano ด้วย
+- **ระวัง:** Duriano mart tables ยังว่างทั้งหมด — รอ custom events ถึง production ก่อน execute
+
+---
+
 ## [2026-08-10] — สร้าง pipeline ครบ 3 ชั้น + ทำ repo structure ให้ parity กับ MCF
 
 - **ทำโดย:** JOEKER + Claude (claude-sonnet-4-6)
