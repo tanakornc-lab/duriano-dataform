@@ -1,0 +1,44 @@
+config {
+    type: "view",
+    schema: "analytics_staging",
+    name: "stg_asc_daily",
+    description: "Staging: App Store Connect daily sales report for Duriano",
+    columns: {
+        report_date:             "วันที่ของ report",
+        country_code:            "รหัสประเทศ 2 ตัวอักษร (ISO 3166-1 alpha-2)",
+        device:                  "ประเภท device (iPhone, iPad, iPod touch, Desktop, etc.)",
+        product_type_identifier: "ประเภทสินค้า — 1F=Free download, 1T=Update, 7F=Universal free, IA=In-App Purchase",
+        units:                   "จำนวน download / update / purchase ในวันนั้น",
+        developer_proceeds:      "รายได้ developer หลังหัก Apple commission (0 สำหรับ free app)",
+        customer_price:          "ราคาที่ลูกค้าจ่าย (0 สำหรับ free app)",
+        customer_currency:       "สกุลเงินที่ลูกค้าจ่าย",
+        currency_of_proceeds:    "สกุลเงินที่ developer ได้รับ",
+        apple_identifier:        "Apple App ID (string)",
+        title:                   "ชื่อ app ใน App Store",
+        version:                 "เวอร์ชันของ app ที่ดาวน์โหลด",
+        sku:                     "SKU ของ app ที่กำหนดใน App Store Connect",
+        begin_date:              "วันเริ่มต้นของ report period",
+        end_date:                "วันสิ้นสุดของ report period",
+        ingested_at:             "เวลาที่ข้อมูลถูก ingest เข้า BigQuery"
+    }
+}
+
+SELECT
+    report_date,
+    country_code,
+    device,
+    product_type_identifier,
+    units,
+    developer_proceeds,
+    customer_price,
+    customer_currency,
+    currency_of_proceeds,
+    CAST(apple_identifier AS STRING) AS apple_identifier,
+    title,
+    version,
+    sku,
+    begin_date,
+    end_date,
+    ingested_at
+FROM ${ref("asc_sales_raw")}
+WHERE report_date IS NOT NULL

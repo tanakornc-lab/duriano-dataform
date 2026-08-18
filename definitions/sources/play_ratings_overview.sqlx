@@ -1,0 +1,6 @@
+config {
+    type: "declaration",
+    database: "duriano",
+    schema: "play_console_data",
+    name: "p_Ratings_overview__duriano"
+}

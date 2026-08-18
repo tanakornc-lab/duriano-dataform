@@ -1,0 +1,20 @@
+config {
+    type: "view",
+    schema: "analytics_staging",
+    name: "stg_play_ratings",
+    description: "Staging: Google Play ratings overview for Duriano",
+    columns: {
+        report_date:           "วันที่ของ report",
+        package_name:          "Package name ของ app",
+        daily_average_rating:  "คะแนนเฉลี่ยของวันนั้น",
+        total_average_rating:  "คะแนนเฉลี่ยสะสมทั้งหมด"
+    }
+}
+
+SELECT
+    DATE(Date)              AS report_date,
+    Package_Name            AS package_name,
+    Daily_Average_Rating    AS daily_average_rating,
+    Total_Average_Rating    AS total_average_rating
+FROM ${ref("p_Ratings_overview__duriano")}
+WHERE Package_Name = 'com.adisoft.duriano'

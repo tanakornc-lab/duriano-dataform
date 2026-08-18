@@ -1,0 +1,36 @@
+config {
+    type: "view",
+    schema: "analytics_staging",
+    name: "stg_play_earnings",
+    description: "Staging: Google Play transaction-level earnings for Duriano (all transaction types)",
+    columns: {
+        transaction_date:       "วันที่ทำธุรกรรม",
+        package_id:             "Package name ของ app",
+        transaction_type:       "ประเภทธุรกรรม: Charge / Refund / Google fee / Tax",
+        country:                "ประเทศของผู้ซื้อ",
+        sku_id:                 "รหัส IAP item",
+        product_title:          "ชื่อ IAP item",
+        product_type:           "ประเภท product: One-time product / Subscription",
+        offer_id:               "รหัส offer (ถ้ามี promotion)",
+        buyer_currency:         "สกุลเงินของผู้ซื้อ",
+        amount_buyer_currency:  "จำนวนเงินในสกุลของผู้ซื้อ",
+        amount_usd:             "จำนวนเงินใน USD (merchant currency) — refund จะเป็นค่าลบ",
+        service_fee_pct:        "% ค่าธรรมเนียม Google (15 หรือ 30)"
+    }
+}
+
+SELECT
+    CAST(Transaction_Date AS DATE)                        AS transaction_date,
+    CAST(Package_ID AS STRING)                            AS package_id,
+    CAST(Transaction_Type AS STRING)                      AS transaction_type,
+    COALESCE(CAST(Buyer_Country AS STRING), '(not set)') AS country,
+    CAST(Sku_Id AS STRING)                                AS sku_id,
+    CAST(Product_Title AS STRING)                         AS product_title,
+    CAST(Product_Type AS STRING)                          AS product_type,
+    CAST(Offer_ID AS STRING)                              AS offer_id,
+    CAST(Buyer_Currency AS STRING)                        AS buyer_currency,
+    CAST(Amount_Buyer_Currency AS FLOAT64)                AS amount_buyer_currency,
+    CAST(Amount__Merchant_Currency_ AS FLOAT64)           AS amount_usd,
+    CAST(Service_Fee_Percentage AS INT64)                 AS service_fee_pct
+FROM ${ref("p_Earnings__duriano")}
+WHERE Package_ID = 'com.adisoft.duriano'

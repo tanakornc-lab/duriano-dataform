@@ -1,0 +1,46 @@
+config {
+    type: "incremental",
+    schema: "analytics_mart",
+    name: "mart_play_overview_daily",
+    description: "Mart: Google Play daily overview — installs, ratings, crashes for Duriano",
+    uniqueKey: ["report_date", "package_id"],
+    bigquery: {
+        partitionBy: "report_date",
+        clusterBy: ["package_id"]
+    },
+    columns: {
+        report_date:             "วันที่ของข้อมูล (Asia/Bangkok)",
+        package_id:              "Package name ของ app",
+        store:                   "ชื่อ store: google_play",
+        daily_user_installs:     "จำนวน user account ที่ติดตั้งใหม่",
+        daily_user_uninstalls:   "จำนวน user account ที่ถอนการติดตั้ง",
+        daily_device_upgrades:   "จำนวน device ที่อัปเดต",
+        active_device_installs:  "จำนวน active device ที่ติดตั้งอยู่",
+        daily_avg_rating:        "คะแนนเฉลี่ยที่ได้รับในวันนั้น (1–5)",
+        total_avg_rating:        "คะแนนเฉลี่ยสะสม ณ วันนั้น (1–5)",
+        daily_crashes:           "จำนวน crash ในวันนั้น",
+        daily_anrs:              "จำนวน ANR ในวันนั้น"
+    }
+}
+
+SELECT
+    i.report_date,
+    i.package_id,
+    'google_play'                  AS store,
+    i.daily_user_installs,
+    i.daily_user_uninstalls,
+    i.daily_device_upgrades,
+    i.active_device_installs,
+    r.daily_average_rating         AS daily_avg_rating,
+    r.total_average_rating         AS total_avg_rating,
+    COALESCE(c.daily_crashes, 0)   AS daily_crashes,
+    COALESCE(c.daily_anrs, 0)      AS daily_anrs
+FROM ${ref("stg_play_installs")} i
+LEFT JOIN ${ref("stg_play_ratings")} r
+    ON i.report_date = r.report_date
+LEFT JOIN ${ref("stg_play_crashes")} c
+    ON i.report_date = c.report_date
+
+${when(incremental(),
+    `WHERE i.report_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 90 DAY)`
+)}

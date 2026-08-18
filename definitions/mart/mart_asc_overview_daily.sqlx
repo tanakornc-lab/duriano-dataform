@@ -1,0 +1,43 @@
+config {
+    type: "incremental",
+    schema: "analytics_mart",
+    name: "mart_asc_overview_daily",
+    description: "Mart: App Store Connect daily performance — installs and revenue by country and device for Duriano",
+    uniqueKey: ["report_date", "country_code", "device", "product_type_identifier"],
+    bigquery: {
+        partitionBy: "report_date",
+        clusterBy: ["country_code", "device"]
+    },
+    columns: {
+        report_date:             "วันที่ของ report",
+        country_code:            "รหัสประเทศ 2 ตัวอักษร (ISO 3166-1 alpha-2)",
+        device:                  "ประเภท device (iPhone, iPad, etc.)",
+        product_type_identifier: "ประเภทสินค้า — 1F/7F=Free download, 1T/7T=Update, IA=IAP",
+        units:                   "จำนวน download รวมของวันนั้น",
+        gross_revenue:           "รายได้รวมก่อนหัก Apple commission (customer_currency)",
+        customer_currency:       "สกุลเงินที่ลูกค้าจ่าย",
+        developer_proceeds:      "รายได้ developer หลังหัก Apple commission",
+        currency_of_proceeds:    "สกุลเงินที่ developer ได้รับ",
+        updated_at:              "เวลาที่ข้อมูลถูกประมวลผลล่าสุด"
+    }
+}
+
+SELECT
+    report_date,
+    COALESCE(country_code, '(not set)')            AS country_code,
+    COALESCE(device, '(not set)')                  AS device,
+    COALESCE(product_type_identifier, '(not set)') AS product_type_identifier,
+    SUM(units)                                     AS units,
+    ROUND(SUM(customer_price), 4)                  AS gross_revenue,
+    MAX(customer_currency)                         AS customer_currency,
+    ROUND(SUM(developer_proceeds), 4)              AS developer_proceeds,
+    MAX(currency_of_proceeds)                      AS currency_of_proceeds,
+    CURRENT_TIMESTAMP()                            AS updated_at
+FROM ${ref("stg_asc_daily")}
+WHERE
+    report_date IS NOT NULL
+    AND ${when(incremental(),
+        `report_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 3 DAY)`,
+        `report_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 90 DAY)`
+    )}
+GROUP BY 1, 2, 3, 4

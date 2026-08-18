@@ -1,0 +1,39 @@
+config {
+    type: "table",
+    schema: "analytics_mart",
+    name: "mart_asc_reviews_daily",
+    description: "Mart: App Store Connect daily review stats with cumulative rating for Duriano — ใช้ table (full rebuild) เพื่อให้ cumulative totals ถูกต้องเสมอ",
+    bigquery: {
+        partitionBy: "review_date"
+    },
+    columns: {
+        review_date:         "วันที่โพสต์ review",
+        daily_review_count:  "จำนวน review ที่โพสต์ในวันนั้น",
+        daily_avg_rating:    "คะแนนเฉลี่ยของ review ในวันนั้น",
+        rating_1_count:      "จำนวน review 1 ดาว",
+        rating_2_count:      "จำนวน review 2 ดาว",
+        rating_3_count:      "จำนวน review 3 ดาว",
+        rating_4_count:      "จำนวน review 4 ดาว",
+        rating_5_count:      "จำนวน review 5 ดาว",
+        total_review_count:  "จำนวน review สะสมทั้งหมดถึงวันนั้น",
+        total_avg_rating:    "คะแนนเฉลี่ยสะสมทั้งหมดถึงวันนั้น"
+    }
+}
+
+SELECT
+    created_date                                                                 AS review_date,
+    COUNT(*)                                                                     AS daily_review_count,
+    ROUND(AVG(rating), 2)                                                        AS daily_avg_rating,
+    COUNTIF(rating = 1)                                                          AS rating_1_count,
+    COUNTIF(rating = 2)                                                          AS rating_2_count,
+    COUNTIF(rating = 3)                                                          AS rating_3_count,
+    COUNTIF(rating = 4)                                                          AS rating_4_count,
+    COUNTIF(rating = 5)                                                          AS rating_5_count,
+    SUM(COUNT(*)) OVER (ORDER BY created_date)                                   AS total_review_count,
+    ROUND(
+        SUM(SUM(rating)) OVER (ORDER BY created_date) /
+        SUM(COUNT(*)) OVER (ORDER BY created_date),
+    2)                                                                           AS total_avg_rating
+FROM ${ref("stg_asc_reviews")}
+WHERE created_date IS NOT NULL
+GROUP BY 1

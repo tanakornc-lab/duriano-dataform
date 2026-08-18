@@ -1,0 +1,46 @@
+config {
+    type: "incremental",
+    schema: "analytics_mart",
+    name: "mart_play_earnings_daily",
+    description: "Mart: Google Play daily earnings by country and IAP item for Duriano (net proceeds = charges + refunds)",
+    uniqueKey: ["report_date", "package_id", "country", "sku_id"],
+    bigquery: {
+        partitionBy: "report_date",
+        clusterBy: ["country", "sku_id"]
+    },
+    columns: {
+        report_date:        "วันที่ทำธุรกรรม",
+        package_id:         "Package name ของ app",
+        store:              "ชื่อ store: google_play",
+        country:            "ประเทศของผู้ซื้อ",
+        sku_id:             "รหัส IAP item",
+        product_title:      "ชื่อ IAP item",
+        product_type:       "ประเภท: One-time product / Subscription",
+        gross_revenue_usd:  "รายได้ก่อนหัก refund (Charge rows เท่านั้น)",
+        refunds_usd:        "ยอด refund (แสดงเป็นค่าบวก)",
+        net_proceeds_usd:   "รายได้สุทธิหลังหัก refund — ใช้ตัวเลขนี้สำหรับ dashboard",
+        transactions:       "จำนวน Charge transactions (ไม่รวม refund)"
+    }
+}
+
+SELECT
+    transaction_date                                                              AS report_date,
+    package_id,
+    'google_play'                                                                 AS store,
+    country,
+    COALESCE(sku_id, '(not set)')                                                AS sku_id,
+    MAX(product_title)                                                            AS product_title,
+    MAX(product_type)                                                             AS product_type,
+    CAST(SUM(CASE WHEN transaction_type = 'Charge'
+                  THEN amount_usd ELSE 0 END) AS FLOAT64)                        AS gross_revenue_usd,
+    CAST(ABS(SUM(CASE WHEN transaction_type = 'Refund'
+                      THEN amount_usd ELSE 0 END)) AS FLOAT64)                   AS refunds_usd,
+    CAST(SUM(amount_usd) AS FLOAT64)                                             AS net_proceeds_usd,
+    CAST(COUNTIF(transaction_type = 'Charge') AS INT64)                          AS transactions
+FROM ${ref("stg_play_earnings")}
+
+${when(incremental(),
+    `WHERE transaction_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 90 DAY)`
+)}
+
+GROUP BY 1, 2, 3, 4, 5

@@ -1,0 +1,34 @@
+config {
+    type: "view",
+    schema: "analytics_staging",
+    name: "stg_play_installs",
+    description: "Staging: Google Play install metrics for Duriano",
+    columns: {
+        report_date:              "วันที่ของ report",
+        package_id:               "Package name ของ app",
+        daily_device_installs:    "จำนวน device ที่ install ใหม่ในวันนั้น",
+        daily_device_uninstalls:  "จำนวน device ที่ uninstall ในวันนั้น",
+        daily_device_upgrades:    "จำนวน device ที่ upgrade ในวันนั้น",
+        active_device_installs:   "จำนวน device ที่ active (มี app อยู่ ณ สิ้นวัน)",
+        daily_user_installs:      "จำนวน user ที่ install ใหม่ในวันนั้น",
+        daily_user_uninstalls:    "จำนวน user ที่ uninstall ในวันนั้น",
+        install_events:           "จำนวน install events",
+        update_events:            "จำนวน update events",
+        uninstall_events:         "จำนวน uninstall events"
+    }
+}
+
+SELECT
+    DATE(Date)                 AS report_date,
+    Package_name               AS package_id,
+    Daily_Device_Installs      AS daily_device_installs,
+    Daily_Device_Uninstalls    AS daily_device_uninstalls,
+    Daily_Device_Upgrades      AS daily_device_upgrades,
+    Active_Device_Installs     AS active_device_installs,
+    Daily_User_Installs        AS daily_user_installs,
+    Daily_User_Uninstalls      AS daily_user_uninstalls,
+    Install_events             AS install_events,
+    Update_events              AS update_events,
+    Uninstall_events           AS uninstall_events
+FROM ${ref("p_Installs_overview__duriano")}
+WHERE Package_name = 'com.adisoft.duriano'

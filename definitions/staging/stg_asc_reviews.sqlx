@@ -1,0 +1,30 @@
+config {
+    type: "view",
+    schema: "analytics_staging",
+    name: "stg_asc_reviews",
+    description: "Staging: App Store Connect customer reviews for Duriano",
+    columns: {
+        review_id:         "Unique review ID จาก Apple",
+        rating:            "คะแนน 1–5 ดาว",
+        title:             "หัวข้อ review",
+        body:              "เนื้อหา review",
+        reviewer_nickname: "ชื่อผู้รีวิว",
+        created_date:      "วันที่โพสต์ review",
+        country_code:      "รหัสประเทศ 2 ตัวอักษร (territory จาก Apple)",
+        apple_identifier:  "Apple App ID",
+        ingested_at:       "เวลาที่ข้อมูลถูก ingest เข้า BigQuery"
+    }
+}
+
+SELECT
+    review_id,
+    CAST(rating AS INT64)  AS rating,
+    title,
+    body,
+    reviewer_nickname,
+    DATE(created_date)     AS created_date,
+    territory              AS country_code,
+    apple_identifier,
+    ingested_at
+FROM ${ref("asc_reviews_raw")}
+WHERE review_id IS NOT NULL

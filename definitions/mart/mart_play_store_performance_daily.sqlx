@@ -1,0 +1,41 @@
+config {
+    type: "incremental",
+    schema: "analytics_mart",
+    name: "mart_play_store_performance_daily",
+    description: "Mart: Google Play store listing performance by country for Duriano — Impressions and CVR ที่ไม่มีใน ASC",
+    uniqueKey: ["report_date", "package_id", "country"],
+    bigquery: {
+        partitionBy: "report_date",
+        clusterBy: ["country"]
+    },
+    columns: {
+        report_date:                          "วันที่ของ report",
+        package_id:                           "Package name ของ app",
+        store:                                "ชื่อ store: google_play",
+        country:                              "รหัสประเทศ",
+        store_listing_visitors:               "จำนวน unique users ที่เข้าชม store listing",
+        store_listing_acquisitions:           "จำนวน users ที่ install หลังจากเข้าชม listing",
+        visitor_to_installer_conversion_rate: "อัตราการแปลงจากผู้เข้าชมเป็น installer (%)"
+    }
+}
+
+SELECT
+    report_date,
+    package_name                                AS package_id,
+    'google_play'                               AS store,
+    country,
+    SUM(store_listing_visitors)                 AS store_listing_visitors,
+    SUM(store_listing_acquisitions)             AS store_listing_acquisitions,
+    ROUND(
+        SAFE_DIVIDE(
+            SUM(store_listing_acquisitions),
+            NULLIF(SUM(store_listing_visitors), 0)
+        ) * 100, 2
+    )                                           AS visitor_to_installer_conversion_rate
+FROM ${ref("stg_play_store_performance")}
+
+${when(incremental(),
+    `WHERE report_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 90 DAY)`
+)}
+
+GROUP BY 1, 2, 3, 4

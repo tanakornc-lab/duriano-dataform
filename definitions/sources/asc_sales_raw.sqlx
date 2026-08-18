@@ -1,0 +1,6 @@
+config {
+    type: "declaration",
+    database: "duriano",
+    schema: "app_store_report",
+    name: "asc_sales_raw"
+}

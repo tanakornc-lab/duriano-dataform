@@ -1,0 +1,20 @@
+config {
+    type: "view",
+    schema: "analytics_staging",
+    name: "stg_play_crashes",
+    description: "Staging: Google Play crashes and ANRs overview for Duriano",
+    columns: {
+        report_date:    "วันที่ของ report",
+        package_name:   "Package name ของ app",
+        daily_crashes:  "จำนวน crash ในวันนั้น",
+        daily_anrs:     "จำนวน ANR (App Not Responding) ในวันนั้น"
+    }
+}
+
+SELECT
+    DATE(Date)      AS report_date,
+    Package_Name    AS package_name,
+    Daily_Crashes   AS daily_crashes,
+    Daily_ANRs      AS daily_anrs
+FROM ${ref("p_Crashes_overview__duriano")}
+WHERE Package_Name = 'com.adisoft.duriano'
