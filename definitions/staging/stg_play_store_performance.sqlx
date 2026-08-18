@@ -16,9 +16,9 @@ config {
 SELECT
     DATE(Date)                               AS report_date,
     Package_Name                             AS package_name,
-    Country                                  AS country,
-    Store_Listing_Visitors                   AS store_listing_visitors,
-    Store_Listing_Acquisitions               AS store_listing_acquisitions,
-    Visitor_To_Installer_Conversion_Rate     AS visitor_to_installer_conversion_rate
+    Country_region                           AS country,
+    Store_listing_visitors                   AS store_listing_visitors,
+    Store_listing_acquisitions               AS store_listing_acquisitions,
+    Store_listing_conversion_rate            AS visitor_to_installer_conversion_rate
 FROM ${ref("p_Store_Performance_country__duriano")}
 WHERE Package_Name = 'com.adisoft.duriano'
