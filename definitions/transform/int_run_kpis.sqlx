@@ -69,7 +69,7 @@ SELECT
   CAST(SUM(r.boss_wins)                                   AS INT64)   AS total_boss_wins,
 
   -- mode selections (LEFT JOIN: มีแค่ rows ที่ game_mode × date × country × os ตรงกัน)
-  CAST(COALESCE(m.total_mode_selections, 0)               AS INT64)   AS mode_selections
+  CAST(COALESCE(MAX(m.total_mode_selections), 0)          AS INT64)   AS mode_selections
 
 FROM run_data r
 LEFT JOIN mode_selections m
