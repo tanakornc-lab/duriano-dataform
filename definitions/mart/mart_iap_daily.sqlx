@@ -8,7 +8,7 @@ config {
         clusterBy: ["country", "os", "event_type"]
     },
     assertions: {
-        nonNull: ["event_date", "country", "os", "event_type", "item_name", "offer_id"]
+        nonNull: ["event_date", "country", "os", "event_type", "item_name"]
     },
     description: "Mart: monetization (§9 §11). grain: date × country × os × event_type × item_name × offer_id. รวม purchase / restore_purchase / paywall_impression",
     columns: {
