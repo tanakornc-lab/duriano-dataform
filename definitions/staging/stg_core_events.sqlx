@@ -45,7 +45,7 @@ WITH
   FROM
     `${dataform.projectConfig.vars.ga4_dataset}.events_*`
   WHERE
-    _TABLE_SUFFIX >= FORMAT_DATE('%Y%m%d', DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 91 DAY))
+    _TABLE_SUFFIX >= FORMAT_DATE('%Y%m%d', DATE_SUB(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), INTERVAL 91 DAY))
     AND event_name IN ('session_start',
       'first_open',
       'user_engagement')
@@ -64,7 +64,7 @@ SELECT
   SAFE_CAST(COALESCE(NULLIF(user_id, ''), user_pseudo_id) AS STRING) AS resolved_user_id,
   SAFE_CAST(EXTRACT(DATE
     FROM
-      TIMESTAMP_MICROS(event_timestamp) AT TIME ZONE 'Asia/Bangkok') AS DATE) AS event_date,
+      TIMESTAMP_MICROS(event_timestamp) AT TIME ZONE '${dataform.projectConfig.vars.timezone}') AS DATE) AS event_date,
   SAFE_CAST(TIMESTAMP_MICROS(event_timestamp) AS TIMESTAMP) AS event_timestamp,
   SAFE_CAST(event_name AS STRING) AS event_name,
   SAFE_CAST(country AS STRING) AS country,
@@ -73,7 +73,7 @@ SELECT
   SAFE_CAST(engagement_time_msec / 1000 AS FLOAT64) AS engagement_time_sec,
   SAFE_CAST(EXTRACT(DATE
     FROM
-      TIMESTAMP_MICROS(NULLIF(user_first_touch_timestamp, 0)) AT TIME ZONE 'Asia/Bangkok') AS DATE) AS first_touch_date
+      TIMESTAMP_MICROS(NULLIF(user_first_touch_timestamp, 0)) AT TIME ZONE '${dataform.projectConfig.vars.timezone}') AS DATE) AS first_touch_date
 FROM
   raw_events
 WHERE

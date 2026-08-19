@@ -6,6 +6,9 @@ config {
         partitionBy: "cohort_date",
         clusterBy: ["country", "os"]
     },
+    assertions: {
+        nonNull: ["cohort_date", "day_n", "country", "os"]
+    },
     description: "ตารางสรุปผลข้อมูลสถิติ Retention Matrix แบบยาว (Long Format) รองรับการทำ Heatmap ใน Looker Studio โดยไม่มีมิติ player_status",
     columns: {
         cohort_date: "วันที่ผู้ใช้เปิดเข้าเล่นเกมเป็นครั้งแรก",
@@ -86,9 +89,9 @@ SELECT
   SAFE_CAST(g.cohort_size AS INT64) AS cohort_size,
   -- Maturity Guard ป้องกันตัวเลขแกว่ง (ถ้า Cohort นั้นอายุยังไม่ถึงวันที่ N ให้ดรอปค่าเป็น NULL ทันที)
 IF
-  ( DATE_DIFF(CURRENT_DATE('Asia/Bangkok'), g.cohort_date, DAY) < g.day_n, NULL, SAFE_CAST(COALESCE(r.retained_users, 0) AS INT64) ) AS retained_users,
+  ( DATE_DIFF(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), g.cohort_date, DAY) < g.day_n, NULL, SAFE_CAST(COALESCE(r.retained_users, 0) AS INT64) ) AS retained_users,
 IF
-  ( DATE_DIFF(CURRENT_DATE('Asia/Bangkok'), g.cohort_date, DAY) < g.day_n, NULL, SAFE_CAST(SAFE_DIVIDE(COALESCE(r.retained_users, 0), NULLIF(g.cohort_size, 0)) AS FLOAT64) ) AS retention_pct
+  ( DATE_DIFF(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), g.cohort_date, DAY) < g.day_n, NULL, SAFE_CAST(SAFE_DIVIDE(COALESCE(r.retained_users, 0), NULLIF(g.cohort_size, 0)) AS FLOAT64) ) AS retention_pct
 FROM
   matrix_grid g
 LEFT JOIN

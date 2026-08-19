@@ -7,6 +7,9 @@ config {
         partitionBy: "event_date",
         clusterBy: ["country", "os", "event_type"]
     },
+    assertions: {
+        nonNull: ["event_date", "country", "os", "event_type", "item_name"]
+    },
     description: "Mart: monetization (§9 §11). grain: date × country × os × event_type × item_name × offer_id. รวม purchase / restore_purchase / paywall_impression",
     columns: {
         event_date: "วันที่ event (Asia/Bangkok)",
@@ -44,6 +47,6 @@ SELECT
 
 FROM ${ref("int_iap_kpis")}
 WHERE ${when(incremental(),
-    `event_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 3 DAY)`,
-    `event_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 90 DAY)`
+    `event_date >= DATE_SUB(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), INTERVAL 3 DAY)`,
+    `event_date >= DATE_SUB(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), INTERVAL 90 DAY)`
 )}

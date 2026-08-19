@@ -2,6 +2,8 @@ defaultProject: duriano
 defaultLocation: "asia-southeast1"
 defaultDataset: dataform
 defaultAssertionDataset: dataform_assertions
-dataformCoreVersion: 3.0.0
+dataformCoreVersion: "3.0.52"
 vars:
   ga4_dataset: "duriano.analytics_485152863"
+  timezone: "Asia/Bangkok"
+  game_name: "duriano"

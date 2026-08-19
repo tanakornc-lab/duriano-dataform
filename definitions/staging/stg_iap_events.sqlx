@@ -25,7 +25,7 @@ config {
 SELECT
   SAFE_CAST(user_pseudo_id AS STRING)                                                AS user_pseudo_id,
   SAFE_CAST(COALESCE(NULLIF(user_id, ''), user_pseudo_id) AS STRING)                AS resolved_user_id,
-  SAFE_CAST(DATE(TIMESTAMP_MICROS(event_timestamp), 'Asia/Bangkok') AS DATE)        AS event_date,
+  SAFE_CAST(DATE(TIMESTAMP_MICROS(event_timestamp), '${dataform.projectConfig.vars.timezone}') AS DATE)        AS event_date,
   SAFE_CAST(TIMESTAMP_MICROS(event_timestamp) AS TIMESTAMP)                         AS event_timestamp,
   SAFE_CAST(event_name AS STRING)                                                    AS event_name,
   SAFE_CAST(COALESCE(geo.country, '(not set)') AS STRING)                           AS country,
@@ -53,6 +53,6 @@ SELECT
 
 FROM `${dataform.projectConfig.vars.ga4_dataset}.events_*`
 WHERE
-  _TABLE_SUFFIX >= FORMAT_DATE('%Y%m%d', DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 1 DAY))
+  _TABLE_SUFFIX >= FORMAT_DATE('%Y%m%d', DATE_SUB(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), INTERVAL 1 DAY))
   AND event_name IN ('purchase', 'restore_purchase', 'paywall_impression')
   AND (SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'debug_mode') IS DISTINCT FROM 1

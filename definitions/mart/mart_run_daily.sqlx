@@ -7,6 +7,9 @@ config {
         partitionBy: "event_date",
         clusterBy: ["country", "os", "result"]
     },
+    assertions: {
+        nonNull: ["event_date", "country", "os", "game_mode", "hero_id", "weapon_id", "trail_id", "difficulty", "result", "cause_of_death"]
+    },
     description: "Mart: daily run performance + pre-run selection (§3 §4 §6 §7). grain: date × country × os × game_mode × hero × weapon × trail × difficulty × result × cause_of_death",
     columns: {
         event_date: "วันที่ run เริ่ม (anchor_date = event_date ของ level_start, Asia/Bangkok)",
@@ -62,6 +65,6 @@ SELECT
 
 FROM ${ref("int_run_kpis")}
 WHERE ${when(incremental(),
-    `event_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 3 DAY)`,
-    `event_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 90 DAY)`
+    `event_date >= DATE_SUB(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), INTERVAL 3 DAY)`,
+    `event_date >= DATE_SUB(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), INTERVAL 90 DAY)`
 )}
