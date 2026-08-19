@@ -25,3 +25,4 @@ FROM
   ranked_user_status
 WHERE
   rn = 1
+  AND cohort_date IS NOT NULL
