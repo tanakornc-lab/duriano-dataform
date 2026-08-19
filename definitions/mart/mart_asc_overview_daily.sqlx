@@ -8,6 +8,9 @@ config {
         partitionBy: "report_date",
         clusterBy: ["country_code", "device"]
     },
+    assertions: {
+        nonNull: ["report_date", "country_code", "device", "product_type_identifier"]
+    },
     columns: {
         report_date:             "วันที่ของ report",
         country_code:            "รหัสประเทศ 2 ตัวอักษร (ISO 3166-1 alpha-2)",
@@ -37,7 +40,7 @@ FROM ${ref("stg_asc_daily")}
 WHERE
     report_date IS NOT NULL
     AND ${when(incremental(),
-        `report_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 3 DAY)`,
-        `report_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 90 DAY)`
+        `report_date >= DATE_SUB(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), INTERVAL 3 DAY)`,
+        `report_date >= DATE_SUB(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), INTERVAL 90 DAY)`
     )}
 GROUP BY 1, 2, 3, 4

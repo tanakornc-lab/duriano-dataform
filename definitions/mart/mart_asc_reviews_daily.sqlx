@@ -6,6 +6,9 @@ config {
     bigquery: {
         partitionBy: "review_date"
     },
+    assertions: {
+        nonNull: ["review_date"]
+    },
     columns: {
         review_date:         "วันที่โพสต์ review",
         daily_review_count:  "จำนวน review ที่โพสต์ในวันนั้น",

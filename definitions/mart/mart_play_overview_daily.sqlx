@@ -8,6 +8,9 @@ config {
         partitionBy: "report_date",
         clusterBy: ["package_id"]
     },
+    assertions: {
+        nonNull: ["report_date", "package_id"]
+    },
     columns: {
         report_date:             "วันที่ของข้อมูล (Asia/Bangkok)",
         package_id:              "Package name ของ app",
@@ -42,5 +45,5 @@ LEFT JOIN ${ref("stg_play_crashes")} c
     ON i.report_date = c.report_date
 
 ${when(incremental(),
-    `WHERE i.report_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 90 DAY)`
+    `WHERE i.report_date >= DATE_SUB(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), INTERVAL 90 DAY)`
 )}

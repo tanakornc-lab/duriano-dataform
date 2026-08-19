@@ -8,6 +8,9 @@ config {
         partitionBy: "report_date",
         clusterBy: ["country", "sku_id"]
     },
+    assertions: {
+        nonNull: ["report_date", "package_id", "country", "sku_id"]
+    },
     columns: {
         report_date:        "วันที่ทำธุรกรรม",
         package_id:         "Package name ของ app",
@@ -40,7 +43,7 @@ SELECT
 FROM ${ref("stg_play_earnings")}
 
 ${when(incremental(),
-    `WHERE transaction_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 90 DAY)`
+    `WHERE transaction_date >= DATE_SUB(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), INTERVAL 90 DAY)`
 )}
 
 GROUP BY 1, 2, 3, 4, 5

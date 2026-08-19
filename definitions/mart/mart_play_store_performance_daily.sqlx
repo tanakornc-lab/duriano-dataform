@@ -8,6 +8,9 @@ config {
         partitionBy: "report_date",
         clusterBy: ["country"]
     },
+    assertions: {
+        nonNull: ["report_date", "package_id", "country"]
+    },
     columns: {
         report_date:                          "วันที่ของ report",
         package_id:                           "Package name ของ app",
@@ -35,7 +38,7 @@ SELECT
 FROM ${ref("stg_play_store_performance")}
 
 ${when(incremental(),
-    `WHERE report_date >= DATE_SUB(CURRENT_DATE('Asia/Bangkok'), INTERVAL 90 DAY)`
+    `WHERE report_date >= DATE_SUB(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), INTERVAL 90 DAY)`
 )}
 
 GROUP BY 1, 2, 3, 4
