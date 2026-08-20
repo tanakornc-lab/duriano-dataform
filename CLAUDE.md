@@ -224,7 +224,7 @@ config {
 |-----|--------------------|-----------------|---------|
 | `asc-pipeline-daily` | 5:00 AM ทุกวัน | `?mode=sales` | Sales report ของวันก่อน |
 | `asc-reviews-daily` | 5:00 AM ทุกวัน | `?mode=reviews` | Reviews ทั้งหมด (full replace) |
-| `asc-analytics-daily` | 6:00 AM ทุกวัน | `?mode=analytics` | ⚠️ ยังไม่ได้สร้าง (pending Part B) |
+| `asc-analytics-daily` | 5:00 AM ทุกวัน | `?mode=analytics` | Analytics ของวันก่อน |
 
 Cloud Run project: `duriano`, region: `asia-southeast1`
 
