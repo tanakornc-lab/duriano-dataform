@@ -2,7 +2,7 @@
 
 > **สถานะเอกสาร:** เอกสารมีชีวิต (living document) — อัปเดตทุกครั้งที่จบ Phase หรือมีการเปลี่ยนโครงสร้าง
 > **สร้างจาก:** การสรุปสถานะจริง ณ 10 ส.ค. 2026 — ทุกข้อมูลในไฟล์นี้มีหลักฐานจากระบบ ไม่มีการเดา
-> **ใช้คู่กับ:** GEMINI.md (กฎ pipeline) และ WORKLOG.md (ประวัติการทำงานรายวัน)
+> **ใช้คู่กับ:** CLAUDE.md (กฎ pipeline) และ WORKLOG.md (ประวัติการทำงานรายวัน)
 > **วิธีใช้กับ AI:** แนบไฟล์นี้เปิดทุก session ใหม่ เพื่อให้ AI รู้สภาพจริงของระบบโดยไม่ต้องพึ่งความจำของ session เก่า
 
 ---
@@ -91,7 +91,7 @@ analytics_staging  (6 views,  stg_*)
 ### 2.4 GitHub Repo: `tanakornc-lab/duriano-dataform`
 
 ```
-GEMINI.md                              ← กฎ pipeline และ standards
+CLAUDE.md                              ← กฎ pipeline และ standards
 TRACKING_PLAN.md                       ← 15 events (3 IMPLEMENTED, 12 DESIGN)
 METRIC_DEFINITIONS.md                  ← §1–§11 KPI definitions
 FINAL_HANDOVER.md                      ← handover checklist
