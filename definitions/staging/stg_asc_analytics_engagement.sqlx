@@ -4,8 +4,8 @@ config {
     name: "stg_asc_analytics_engagement",
     description: "Staging: App Store Connect analytics — engagement metrics (impressions, product page views, app units)",
     columns: {
-        date:             "วันที่ของ metric",
-        territory:        "รหัสประเทศ (ISO 3166-1 alpha-2)",
+        report_date:      "วันที่ของ metric",
+        country:          "รหัสประเทศ (ISO 3166-1 alpha-2) — renamed from Apple API 'territory'",
         device:           "ประเภท device (iPhone, iPad, etc.)",
         platform_version: "เวอร์ชัน iOS",
         event:            "ประเภท engagement event เช่น Impressions, Product Page Views, App Units",
@@ -24,19 +24,19 @@ config {
 }
 
 SELECT
-    date,
-    COALESCE(territory, '(not set)')        AS territory,
-    COALESCE(device, '(not set)')           AS device,
-    COALESCE(platform_version, '(not set)') AS platform_version,
-    COALESCE(event, '(not set)')            AS event,
+    date                                            AS report_date,
+    COALESCE(territory, '(not set)')                AS country,
+    COALESCE(device, '(not set)')                   AS device,
+    COALESCE(platform_version, '(not set)')         AS platform_version,
+    COALESCE(event, '(not set)')                    AS event,
     engagement_type,
     source_type,
     source_info,
     campaign,
     page_type,
     page_title,
-    COALESCE(counts, 0)                     AS counts,
-    COALESCE(unique_counts, 0)              AS unique_counts,
+    COALESCE(counts, 0)                             AS counts,
+    COALESCE(unique_counts, 0)                      AS unique_counts,
     _processing_date,
     _report_name,
     _ingested_at
