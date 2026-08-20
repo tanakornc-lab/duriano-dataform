@@ -3,7 +3,7 @@
 > **กติกา (append-only เหมือน ledger):**
 > 1. เพิ่ม entry ใหม่ไว้**บนสุด**เสมอ ห้ามแก้หรือลบ entry เก่า
 > 2. หนึ่ง AI session = อย่างน้อยหนึ่ง entry — ก่อนปิดแชททุกครั้ง สั่ง AI ว่า: *"สรุปสิ่งที่ทำทั้งหมดใน session นี้เป็น WORKLOG entry ตาม template"*
-> 3. เริ่ม session ใหม่ทุกครั้งด้วยการแนบ: FINAL_HANDOVER.md + GEMINI.md + entry ล่าสุด 2–3 รายการจากไฟล์นี้
+> 3. เริ่ม session ใหม่ทุกครั้งด้วยการแนบ: FINAL_HANDOVER.md + CLAUDE.md + entry ล่าสุด 2–3 รายการจากไฟล์นี้
 > 4. เก็บไฟล์นี้ใน Git คู่กับ TRACKING_PLAN.md
 
 ## Template (copy ไปใช้)
@@ -16,6 +16,27 @@
 - **ตัดสินใจ:** <การตัดสินใจเชิงสถาปัตยกรรมที่เกิดขึ้น + เหตุผล>
 - **ระวัง:** <สิ่งที่ session ถัดไปต้องรู้>
 ```
+
+---
+
+## [2026-08-20] — Rule standardization + ASC Analytics Part B
+
+- **ทำโดย:** JOEKER + Claude (claude-sonnet-4-6)
+- **เสร็จ:**
+  - **Rule standardization (CLAUDE.md)**: เขียน CLAUDE.md ใหม่ทั้งหมดตาม template มาตรฐาน (PROJECT CONFIG + ARCHITECTURE + NAMING CONVENTIONS + SQL STANDARDS + EXTERNAL PIPELINES + SCHEDULER INVENTORY + HEALTHCHECK REFERENCE + SAFETY & GIT) — ลบ GEMINI.md ทิ้ง — PR #14 merged ✅
+  - **FINAL_HANDOVER.md**: เขียนใหม่ให้ครบ (Evidence precedence, Authority, Access rules, Cost discipline, Plan-as-contract, Lessons paid for, Session exit) — PR #14 merged ✅
+  - **Fix GEMINI.md references**: แทนที่ GEMINI.md ด้วย CLAUDE.md ใน SYSTEM_ARCHITECTURE.md, .claude_skills/event-schema-designer.md, WORKLOG.md header — PR #15 merged ✅
+  - **SYSTEM_ARCHITECTURE.md full update**: เพิ่ม ASC pipeline + Play Store pipeline ใน diagram, datasets, mart table inventory (7→15 ตัว), scheduler inventory, file counts (sources 0→9, staging 6→15, mart 7→15) — PR #16 merged ✅
+  - **ASC Analytics Part B**: verify `ASC_ANALYTICS_REQUEST_ID=5ce4d3ff-f7ec-4f34-b542-54948054e240` set อยู่แล้ว — scheduler `asc-analytics-daily` มีอยู่แล้ว (สร้าง 20 ส.ค. 06:12 UTC, schedule 5:00 AM Bangkok) — data โหลดแล้ว (3,824 rows engagement + 996 rows usage) — Full Refresh `mart_asc_engagement_daily` + `mart_asc_usage_daily` ✅
+- **ค้าง:**
+  - รอ game team deploy custom events (12 events ยัง DESIGN)
+  - Setup event-driven orchestration (Log Sink → Pub/Sub → Cloud Run)
+- **ตัดสินใจ:**
+  - GEMINI.md ถูกลบ → CLAUDE.md เป็น source of truth เดียวสำหรับกฎ pipeline
+  - ASC analytics scheduler ใช้ 5:00 AM (ไม่ใช่ 6:00 AM ที่วางแผนไว้ — ใช้ schedule ที่ job มีอยู่จริง)
+- **ระวัง:**
+  - WORKLOG entries เก่าที่อ้าง GEMINI.md เป็น historical record — ไม่ต้องแก้
+  - Play Store Statistics (Installs/Ratings/Crashes): monthly batch — gap ปลายเดือนเป็น normal
 
 ---
 

@@ -76,8 +76,8 @@ analytics_staging  (15 views, stg_*)   ← GA4: 6, ASC: 4, Play Store: 5
 | `mart_asc_overview_daily` | report_date × storefront | units, iap_revenue, proceeds | ✅ มีข้อมูลจริง (ล่าสุด 2026-08-18) |
 | `mart_asc_earnings_daily` | report_date × storefront × product_type_id × country_code | developer_proceeds | ✅ มีข้อมูลจริง (ล่าสุด 2026-08-18) |
 | `mart_asc_reviews_daily` | review_date × territory × rating | review_count | ✅ มีข้อมูลจริง (ล่าสุด 2026-08-15) |
-| `mart_asc_engagement_daily` | report_date × territory × device | impressions, page_views, taps | ⚠️ รอ ASC analytics Part B |
-| `mart_asc_usage_daily` | report_date × territory × device | installs, deletes | ⚠️ รอ ASC analytics Part B |
+| `mart_asc_engagement_daily` | report_date × territory × device | impressions, page_views, taps | ✅ มีข้อมูลจริง (Full Refresh 20 ส.ค. 2026) |
+| `mart_asc_usage_daily` | report_date × territory × device | installs, deletes | ✅ มีข้อมูลจริง (Full Refresh 20 ส.ค. 2026) |
 
 **Play Store pipeline (3 ตัว)** — partition DAY บน `report_date`, source: `duriano.play_console_data`:
 
@@ -104,7 +104,7 @@ analytics_staging  (15 views, stg_*)   ← GA4: 6, ASC: 4, Play Store: 5
 |---|---|---|---|
 | `asc-pipeline-daily` | 5:00 AM ทุกวัน | `?mode=sales` | ✅ ทำงานอยู่ |
 | `asc-reviews-daily` | 5:00 AM ทุกวัน | `?mode=reviews` | ✅ ทำงานอยู่ |
-| `asc-analytics-daily` | 6:00 AM ทุกวัน | `?mode=analytics` | ⚠️ ยังไม่ได้สร้าง (pending Part B) |
+| `asc-analytics-daily` | 5:00 AM ทุกวัน | `?mode=analytics` | ✅ ทำงานอยู่ |
 
 ### 2.4 GitHub Repo: `tanakornc-lab/duriano-dataform`
 
@@ -135,7 +135,7 @@ definitions/mart/                      ← 15 ไฟล์ (GA4: 7, ASC: 5, Play
 | GA4 pipeline (core + retention) | ✅ มีข้อมูลจริง | mart_core_daily ล่าสุด 2026-08-18 |
 | GA4 pipeline (custom events) | 🔲 รอ game team | 12 events ยัง DESIGN — ยังไม่ถูก deploy สู่ production |
 | ASC pipeline (sales + reviews) | ✅ ทำงานรายวัน | 2 schedulers ทำงานอยู่ |
-| ASC pipeline (analytics) | ⚠️ Part B pending | ต้องสร้าง `asc-analytics-daily` scheduler — ASC_ANALYTICS_REQUEST_ID set แล้ว |
+| ASC pipeline (analytics) | ✅ ทำงานรายวัน | scheduler `asc-analytics-daily` (5:00 AM) สร้างแล้ว — Full Refresh mart_asc_engagement_daily + mart_asc_usage_daily รันแล้ว (20 ส.ค. 2026) |
 | Play Store pipeline | ✅ ทำงานรายวัน | DTS อัตโนมัติ — gap ปลายเดือนเป็น normal |
 | Orchestration (event-driven) | 🔲 ยังไม่ setup | ต้อง setup Log Sink → Pub/Sub → Cloud Run เหมือน MCF |
 | BI / Looker Studio | 🔲 ยังไม่เริ่ม | รอ data จากทุก custom event ก่อนออกแบบ dashboard |
@@ -145,13 +145,7 @@ definitions/mart/                      ← 15 ไฟล์ (GA4: 7, ASC: 5, Play
 
 ## 4. รายการรอจัดการ (Action Items)
 
-### 4.1 🔴 สำคัญสุด: สร้าง `asc-analytics-daily` Cloud Scheduler (Part B)
-- `ASC_ANALYTICS_REQUEST_ID=5ce4d3ff-f7ec-4f34-b542-54948054e240` set ใน Cloud Run แล้ว
-- ต้องสร้าง scheduler job `asc-analytics-daily` (6:00 AM, `?mode=analytics`)
-- รัน trigger ครั้งแรกเพื่อโหลดข้อมูลเข้า `asc_analytics_engagement_raw` + `asc_analytics_usage_raw`
-- จากนั้น Full Refresh `mart_asc_engagement_daily` + `mart_asc_usage_daily`
-
-### 4.2 🔴 รอ game team deploy custom events
+### 4.1 🔴 สำคัญสุด: รอ game team deploy custom events
 - 12 events ใน TRACKING_PLAN ยังเป็น DESIGN — pipeline ยังไม่มีข้อมูลจริงให้รัน
 - เมื่อ game team deploy แล้ว: รัน Dataform execution → ตรวจ row counts → อัปเดต TRACKING_PLAN status เป็น IMPLEMENTED
 
