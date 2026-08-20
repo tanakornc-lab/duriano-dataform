@@ -3,17 +3,17 @@ config {
     schema: "analytics_mart",
     name: "mart_asc_overview_daily",
     description: "Mart: App Store Connect daily performance — installs and revenue by country and device for Duriano",
-    uniqueKey: ["report_date", "country_code", "device", "product_type_identifier"],
+    uniqueKey: ["report_date", "country", "device", "product_type_identifier"],
     bigquery: {
         partitionBy: "report_date",
-        clusterBy: ["country_code", "device"]
+        clusterBy: ["country", "device"]
     },
     assertions: {
-        nonNull: ["report_date", "country_code", "device", "product_type_identifier"]
+        nonNull: ["report_date", "country", "device", "product_type_identifier"]
     },
     columns: {
         report_date:             "วันที่ของ report",
-        country_code:            "รหัสประเทศ 2 ตัวอักษร (ISO 3166-1 alpha-2)",
+        country:                 "รหัสประเทศ 2 ตัวอักษร (ISO 3166-1 alpha-2)",
         device:                  "ประเภท device (iPhone, iPad, etc.)",
         product_type_identifier: "ประเภทสินค้า — 1F/7F=Free download, 1T/7T=Update, IA=IAP",
         units:                   "จำนวน download รวมของวันนั้น",
@@ -27,7 +27,7 @@ config {
 
 SELECT
     report_date,
-    COALESCE(country_code, '(not set)')            AS country_code,
+    COALESCE(country, '(not set)')                 AS country,
     COALESCE(device, '(not set)')                  AS device,
     COALESCE(product_type_identifier, '(not set)') AS product_type_identifier,
     SUM(units)                                     AS units,

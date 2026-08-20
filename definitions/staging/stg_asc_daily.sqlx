@@ -5,7 +5,7 @@ config {
     description: "Staging: App Store Connect daily sales report for Duriano",
     columns: {
         report_date:             "วันที่ของ report",
-        country_code:            "รหัสประเทศ 2 ตัวอักษร (ISO 3166-1 alpha-2)",
+        country:                 "รหัสประเทศ 2 ตัวอักษร (ISO 3166-1 alpha-2)",
         device:                  "ประเภท device (iPhone, iPad, iPod touch, Desktop, etc.)",
         product_type_identifier: "ประเภทสินค้า — 1F=Free download, 1T=Update, 7F=Universal free, IA=In-App Purchase",
         units:                   "จำนวน download / update / purchase ในวันนั้น",
@@ -25,7 +25,7 @@ config {
 
 SELECT
     report_date,
-    country_code,
+    country_code                          AS country,
     device,
     product_type_identifier,
     units,
@@ -33,7 +33,7 @@ SELECT
     customer_price,
     customer_currency,
     currency_of_proceeds,
-    CAST(apple_identifier AS STRING) AS apple_identifier,
+    CAST(apple_identifier AS STRING)      AS apple_identifier,
     title,
     version,
     sku,
