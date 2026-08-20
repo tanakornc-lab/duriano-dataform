@@ -1,9 +1,8 @@
 config {
-    type: "incremental",
+    type: "table",
     schema: "analytics_mart",
     name: "mart_asc_overview_daily",
     description: "Mart: App Store Connect daily performance — installs and revenue by country and device for Duriano",
-    uniqueKey: ["report_date", "country", "device", "product_type_identifier"],
     bigquery: {
         partitionBy: "report_date",
         clusterBy: ["country", "device"]
@@ -37,10 +36,5 @@ SELECT
     MAX(currency_of_proceeds)                      AS currency_of_proceeds,
     CURRENT_TIMESTAMP()                            AS updated_at
 FROM ${ref("stg_asc_daily")}
-WHERE
-    report_date IS NOT NULL
-    AND ${when(incremental(),
-        `report_date >= DATE_SUB(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), INTERVAL 3 DAY)`,
-        `report_date >= DATE_SUB(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), INTERVAL 90 DAY)`
-    )}
+WHERE report_date >= DATE_SUB(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), INTERVAL 90 DAY)
 GROUP BY 1, 2, 3, 4

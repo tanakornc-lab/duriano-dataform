@@ -1,9 +1,8 @@
 config {
-    type: "incremental",
+    type: "table",
     schema: "analytics_mart",
     name: "mart_asc_earnings_daily",
     description: "Mart: App Store Connect daily earnings by SKU and country for Duriano (amounts in customer's local currency)",
-    uniqueKey: ["report_date", "sku", "product_type_identifier", "country", "customer_currency"],
     bigquery: {
         partitionBy: "report_date",
         clusterBy: ["product_type_identifier", "country"]
@@ -37,10 +36,5 @@ SELECT
     ROUND(SUM(customer_price), 4)                   AS gross_revenue,
     ROUND(SUM(developer_proceeds), 4)               AS developer_proceeds
 FROM ${ref("stg_asc_daily")}
-WHERE
-    report_date IS NOT NULL
-    AND ${when(incremental(),
-        `report_date >= DATE_SUB(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), INTERVAL 3 DAY)`,
-        `report_date >= DATE_SUB(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), INTERVAL 90 DAY)`
-    )}
+WHERE report_date >= DATE_SUB(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), INTERVAL 90 DAY)
 GROUP BY 1, 2, 4, 5, 6
