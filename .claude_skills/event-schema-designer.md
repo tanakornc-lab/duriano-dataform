@@ -5,7 +5,7 @@
 ## Workflow & Strict Rules
 ก่อนเสนอการออกแบบ Event ใหม่ ให้ใช้ Tool อ่าน 2 ไฟล์นี้เสมอ:
 
-1. `../GEMINI.md` (ดูกฎ Naming Convention และข้อบังคับการตั้งชื่อ)
+1. `../CLAUDE.md` (ดูกฎ Naming Convention และข้อบังคับการตั้งชื่อ)
 2. `../TRACKING_PLAN.md` (ตรวจสอบ Event ที่มีอยู่แล้วในระบบ)
 
 ## ข้อบังคับ:
