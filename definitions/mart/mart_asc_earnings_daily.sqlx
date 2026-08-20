@@ -3,20 +3,20 @@ config {
     schema: "analytics_mart",
     name: "mart_asc_earnings_daily",
     description: "Mart: App Store Connect daily earnings by SKU and country for Duriano (amounts in customer's local currency)",
-    uniqueKey: ["report_date", "sku", "product_type_identifier", "country_code", "customer_currency"],
+    uniqueKey: ["report_date", "sku", "product_type_identifier", "country", "customer_currency"],
     bigquery: {
         partitionBy: "report_date",
-        clusterBy: ["product_type_identifier", "country_code"]
+        clusterBy: ["product_type_identifier", "country"]
     },
     assertions: {
-        nonNull: ["report_date", "sku", "product_type_identifier", "country_code", "customer_currency"]
+        nonNull: ["report_date", "sku", "product_type_identifier", "country", "customer_currency"]
     },
     columns: {
         report_date:             "วันที่ของ report",
         sku:                     "SKU ของ app หรือ product identifier ของ IAP item",
         product_title:           "ชื่อ app หรือ IAP item",
         product_type_identifier: "ประเภทสินค้า — 1F=Free download, 7F=Update, IA1=IAP",
-        country_code:            "รหัสประเทศ 2 ตัวอักษร",
+        country:                 "รหัสประเทศ 2 ตัวอักษร (ISO 3166-1 alpha-2)",
         customer_currency:       "สกุลเงินที่ลูกค้าจ่าย",
         currency_of_proceeds:    "สกุลเงินที่ developer ได้รับ",
         units:                   "จำนวน download / purchase (ลบหมายถึง refund)",
@@ -27,15 +27,15 @@ config {
 
 SELECT
     report_date,
-    COALESCE(sku, '(not set)')                        AS sku,
-    MAX(title)                                        AS product_title,
-    COALESCE(product_type_identifier, '(not set)')    AS product_type_identifier,
-    COALESCE(country_code, '(not set)')               AS country_code,
-    COALESCE(customer_currency, '(not set)')          AS customer_currency,
-    MAX(currency_of_proceeds)                         AS currency_of_proceeds,
-    SUM(CAST(units AS INT64))                         AS units,
-    ROUND(SUM(customer_price), 4)                     AS gross_revenue,
-    ROUND(SUM(developer_proceeds), 4)                 AS developer_proceeds
+    COALESCE(sku, '(not set)')                      AS sku,
+    MAX(title)                                      AS product_title,
+    COALESCE(product_type_identifier, '(not set)')  AS product_type_identifier,
+    COALESCE(country, '(not set)')                  AS country,
+    COALESCE(customer_currency, '(not set)')        AS customer_currency,
+    MAX(currency_of_proceeds)                       AS currency_of_proceeds,
+    SUM(CAST(units AS INT64))                       AS units,
+    ROUND(SUM(customer_price), 4)                   AS gross_revenue,
+    ROUND(SUM(developer_proceeds), 4)               AS developer_proceeds
 FROM ${ref("stg_asc_daily")}
 WHERE
     report_date IS NOT NULL
