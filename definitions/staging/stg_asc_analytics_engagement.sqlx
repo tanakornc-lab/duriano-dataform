@@ -1,0 +1,44 @@
+config {
+    type: "view",
+    schema: "analytics_staging",
+    name: "stg_asc_analytics_engagement",
+    description: "Staging: App Store Connect analytics — engagement metrics (impressions, product page views, app units)",
+    columns: {
+        report_date:      "วันที่ของ metric",
+        country:          "รหัสประเทศ (ISO 3166-1 alpha-2) — renamed from Apple API 'territory'",
+        device:           "ประเภท device (iPhone, iPad, etc.)",
+        platform_version: "เวอร์ชัน iOS",
+        event:            "ประเภท engagement event เช่น Impressions, Product Page Views, App Units",
+        engagement_type:  "ประเภทย่อยของ engagement",
+        source_type:      "แหล่งที่มาของ traffic (App Store Browse, App Store Search, etc.)",
+        source_info:      "ข้อมูลเพิ่มเติมของ source",
+        campaign:         "campaign name ถ้ามี",
+        page_type:        "ประเภทหน้าที่แสดง",
+        page_title:       "ชื่อหน้า",
+        counts:           "จำนวน event ทั้งหมด",
+        unique_counts:    "จำนวน unique user/device",
+        _processing_date: "วันที่ Apple ประมวลผล report",
+        _report_name:     "ชื่อ report จาก ASC API",
+        _ingested_at:     "เวลาที่ข้อมูลถูก ingest เข้า BigQuery"
+    }
+}
+
+SELECT
+    date                                            AS report_date,
+    COALESCE(territory, '(not set)')                AS country,
+    COALESCE(device, '(not set)')                   AS device,
+    COALESCE(platform_version, '(not set)')         AS platform_version,
+    COALESCE(event, '(not set)')                    AS event,
+    engagement_type,
+    source_type,
+    source_info,
+    campaign,
+    page_type,
+    page_title,
+    COALESCE(counts, 0)                             AS counts,
+    COALESCE(unique_counts, 0)                      AS unique_counts,
+    _processing_date,
+    _report_name,
+    _ingested_at
+FROM ${ref("asc_analytics_engagement_raw")}
+WHERE date IS NOT NULL

@@ -1,0 +1,44 @@
+config {
+    type: "incremental",
+    schema: "analytics_mart",
+    name: "mart_asc_engagement_daily",
+    description: "Mart: App Store Connect daily engagement — impressions, product page views, app units by country, device, and source",
+    uniqueKey: ["report_date", "country", "device", "event", "source_type", "page_type"],
+    bigquery: {
+        partitionBy: "report_date",
+        clusterBy: ["country", "device"]
+    },
+    assertions: {
+        nonNull: ["report_date", "country", "device", "event"]
+    },
+    columns: {
+        report_date:         "วันที่ของ metric",
+        country:             "รหัสประเทศ (ISO 3166-1 alpha-2)",
+        device:              "ประเภท device (iPhone, iPad, etc.)",
+        event:               "ประเภท engagement event (Impressions, Product Page Views, App Units, etc.)",
+        source_type:         "แหล่งที่มาของ traffic (App Store Browse, App Store Search, etc.)",
+        page_type:           "ประเภทหน้าใน App Store",
+        total_counts:        "จำนวน event ทั้งหมดในวันนั้น",
+        total_unique_counts: "จำนวน unique user/device ในวันนั้น",
+        updated_at:          "เวลาที่ข้อมูลถูกประมวลผลล่าสุด"
+    }
+}
+
+SELECT
+    report_date,
+    country,
+    device,
+    event,
+    COALESCE(source_type, '(not set)')  AS source_type,
+    COALESCE(page_type, '(not set)')    AS page_type,
+    SUM(counts)                         AS total_counts,
+    SUM(unique_counts)                  AS total_unique_counts,
+    CURRENT_TIMESTAMP()                 AS updated_at
+FROM ${ref("stg_asc_analytics_engagement")}
+WHERE
+    report_date IS NOT NULL
+    AND ${when(incremental(),
+        `report_date >= DATE_SUB(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), INTERVAL 3 DAY)`,
+        `report_date >= DATE_SUB(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), INTERVAL 90 DAY)`
+    )}
+GROUP BY 1, 2, 3, 4, 5, 6

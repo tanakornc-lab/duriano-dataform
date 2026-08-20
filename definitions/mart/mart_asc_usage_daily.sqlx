@@ -1,0 +1,52 @@
+config {
+    type: "incremental",
+    schema: "analytics_mart",
+    name: "mart_asc_usage_daily",
+    description: "Mart: App Store Connect daily usage — sessions, active devices, and installs by country, device, and app version",
+    uniqueKey: ["report_date", "country", "device", "app_version", "event"],
+    bigquery: {
+        partitionBy: "report_date",
+        clusterBy: ["country", "device"]
+    },
+    assertions: {
+        nonNull: ["report_date", "country", "device", "app_version", "event"]
+    },
+    columns: {
+        report_date:             "วันที่ของ metric",
+        country:                 "รหัสประเทศ (ISO 3166-1 alpha-2)",
+        device:                  "ประเภท device (iPhone, iPad, etc.)",
+        app_version:             "เวอร์ชันของ app",
+        event:                   "ประเภท usage event (Sessions, Active Devices, Crashes, etc.)",
+        total_sessions:          "จำนวน session รวม",
+        total_session_duration:  "รวม duration ของทุก session (วินาที)",
+        total_unique_devices:    "จำนวน unique device",
+        total_users_opting_in:   "จำนวน user ที่ opt-in analytics",
+        total_installs:          "จำนวน install",
+        total_downloading_users: "จำนวน user ที่ download",
+        total_counts:            "จำนวน event รวม (general count)",
+        updated_at:              "เวลาที่ข้อมูลถูกประมวลผลล่าสุด"
+    }
+}
+
+SELECT
+    report_date,
+    country,
+    device,
+    app_version,
+    event,
+    SUM(sessions)               AS total_sessions,
+    SUM(total_session_duration) AS total_session_duration,
+    SUM(unique_devices)         AS total_unique_devices,
+    SUM(users_opting_in)        AS total_users_opting_in,
+    SUM(installs)               AS total_installs,
+    SUM(downloading_users)      AS total_downloading_users,
+    SUM(counts)                 AS total_counts,
+    CURRENT_TIMESTAMP()         AS updated_at
+FROM ${ref("stg_asc_analytics_usage")}
+WHERE
+    report_date IS NOT NULL
+    AND ${when(incremental(),
+        `report_date >= DATE_SUB(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), INTERVAL 3 DAY)`,
+        `report_date >= DATE_SUB(CURRENT_DATE('${dataform.projectConfig.vars.timezone}'), INTERVAL 90 DAY)`
+    )}
+GROUP BY 1, 2, 3, 4, 5
