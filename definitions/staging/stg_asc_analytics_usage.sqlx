@@ -2,7 +2,7 @@ config {
     type: "view",
     schema: "analytics_staging",
     name: "stg_asc_analytics_usage",
-    description: "Staging: App Store Connect analytics — usage metrics (sessions, installs, active devices)",
+    description: "Staging: App Store Connect analytics — usage metrics (sessions, installs, active devices) ไม่รวม report Detailed, 1 ชุด/(วัน, report) จาก processing date ล่าสุด",
     columns: {
         report_date:            "วันที่ของ metric",
         country:                "รหัสประเทศ (ISO 3166-1 alpha-2) — renamed from Apple API 'territory'",
@@ -31,6 +31,18 @@ config {
     }
 }
 
+-- Apple ส่งข้อมูลซ้อนกัน 2 แบบ ต้องกรองไม่งั้นนับซ้ำ:
+--   1) report Standard กับ Detailed เป็น event ชุดเดียวกันคนละระดับรายละเอียด → ตัด Detailed ออก
+--      (เก็บ App Opt In ไว้ — เป็นแหล่งเดียวของ users_opting_in / downloading_users และไม่มีคู่ Detailed)
+--   2) แต่ละ _processing_date มีข้อมูลย้อนหลังหลายวัน (ตัวเลขสะสม restate) → ใช้ processing date ล่าสุดของแต่ละ (วัน, report)
+WITH latest AS (
+    SELECT
+        *,
+        MAX(_processing_date) OVER (PARTITION BY date, _report_name) AS latest_processing_date
+    FROM ${ref("asc_analytics_usage_raw")}
+    WHERE _report_name NOT LIKE '% Detailed'
+)
+
 SELECT
     date                                            AS report_date,
     COALESCE(territory, '(not set)')                AS country,
@@ -56,5 +68,7 @@ SELECT
     _processing_date,
     _report_name,
     _ingested_at
-FROM ${ref("asc_analytics_usage_raw")}
-WHERE date IS NOT NULL
+FROM latest
+WHERE
+    _processing_date = latest_processing_date
+    AND date IS NOT NULL

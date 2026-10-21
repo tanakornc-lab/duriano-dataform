@@ -19,6 +19,23 @@
 
 ---
 
+## [2026-10-21] — Fix ASC analytics over-count (Standard/Detailed + processing-date restate)
+
+- **ทำโดย:** JOEKER + Claude (claude-opus-5-5)
+- **เสร็จ:**
+  - `stg_asc_analytics_engagement`: ใช้เฉพาะ report `App Store Discovery and Engagement Standard` + processing date ล่าสุดต่อ `date`
+  - `stg_asc_analytics_usage`: ตัด report `* Detailed` + processing date ล่าสุดต่อ `(date, _report_name)`
+  - ตรวจด้วย SELECT: impressions 30,634,369 → 5,198,172 (~5.9x), sessions 59,379 → 10,022, installs 24,334 → 3,629 (ช่วง 2026-08-14..2026-10-18)
+- **ค้าง:**
+  - หลัง merge ต้อง Full Refresh `mart_asc_engagement_daily` + `mart_asc_usage_daily`
+  - mart ทั้ง 2 ตัวหยุดอัปเดตที่ 2026-08-24 — ต้องตรวจ schedule/workflow ว่ารวม tag/action นี้อยู่หรือไม่
+- **ตัดสินใจ:**
+  - ใช้ pattern เดียวกับ merge-miko-dataform PR #18 — `MAX(_processing_date) OVER (PARTITION BY date)` + filter `_report_name`
+  - usage เก็บ `App Opt In` ไว้ (แหล่งเดียวของ users_opting_in / downloading_users)
+- **ระวัง:**
+  - ห้าม SUM raw analytics tables ตรงๆ — Apple restate ตัวเลขสะสมทุก processing date (engagement ~3 วัน, usage ~6 วัน)
+  - `Platform App Installs` มี `date` เป็น NULL (ใช้ `install_day`) จึงถูกตัดโดย `date IS NOT NULL` มาตั้งแต่เดิม → `total_installs` ใน mart เป็น 0
+
 ## [2026-08-20] — Rule standardization + ASC Analytics Part B
 
 - **ทำโดย:** JOEKER + Claude (claude-sonnet-4-6)
